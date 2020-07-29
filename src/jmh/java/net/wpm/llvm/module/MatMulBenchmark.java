@@ -161,8 +161,8 @@ public class MatMulBenchmark {
 
 		jnr.ffi.Runtime runtime = jnr.ffi.Runtime.getSystemRuntime();        
 		jnr.ffi.Pointer aPtr = jnr.ffi.Memory.allocateDirect(runtime, a.length * 4, false);
-		jnr.ffi.Pointer bPtr = jnr.ffi.Memory.allocateDirect(runtime, a.length * 4, false);
-		jnr.ffi.Pointer cPtr = jnr.ffi.Memory.allocateDirect(runtime, a.length * 4, false);
+		jnr.ffi.Pointer bPtr = jnr.ffi.Memory.allocateDirect(runtime, b.length * 4, false);
+		jnr.ffi.Pointer cPtr = jnr.ffi.Memory.allocateDirect(runtime, c.length * 4, false);
 
 		aPtr.put(0, a, 0, a.length);
 		bPtr.put(0, b, 0, b.length);
