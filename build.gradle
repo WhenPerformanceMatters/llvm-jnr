@@ -1,0 +1,120 @@
+plugins {
+	id 'java'
+	id 'eclipse'
+	id 'idea'
+	id 'maven'
+	id 'signing'
+	id 'me.champeau.gradle.jmh' version '0.5.0'
+}
+
+sourceCompatibility = targetCompatibility = 1.14
+tasks.withType(AbstractCompile)*.options*.encoding = "UTF-8"
+
+jmh {
+	jmhVersion = '1.23' 
+}
+
+repositories {
+    mavenCentral()
+    maven { url 'https://oss.sonatype.org/content/repositories/snapshots' }
+}
+
+dependencies {
+	implementation group: 'com.github.jnr', name: 'jnr-ffi', version: '2.1.16'	
+	implementation group: 'org.bytedeco', name: 'llvm-platform', version: '10.0.0-1.5.4-SNAPSHOT'
+	
+	testCompile group: 'junit', name: 'junit', version: '4.13'	
+	
+	jmh group: 'net.java.dev.jna', name: 'jna', version: '5.5.0'	
+	jmh group: 'org.bytedeco', name: 'mkl-platform', version: '2020.1-1.5.3'
+	jmh group: 'org.bytedeco', name: 'mkl-platform-redist', version: '2020.1-1.5.3'	
+	jmh group: 'org.bytedeco', name: 'openblas-platform', version: '0.3.9-1.5.3'
+}
+
+wrapper {
+    gradleVersion = "6.5.1";
+	distributionUrl = distributionUrl.replace("bin", "all");
+}
+
+
+
+//--------------------------------------------------------------------------------------------------
+//------------------------------------- Publish to Maven -------------------------------------------
+//--------------------------------------------------------------------------------------------------
+
+task sourceJar(type: Jar) {
+	from sourceSets.main.allJava
+	classifier "sources"
+}
+
+task javadocJar(type: Jar, dependsOn: javadoc) {
+	from javadoc.destinationDir
+	classifier = 'javadoc'
+}   
+
+artifacts {
+    archives sourceJar
+    archives javadocJar
+}
+
+signing {
+    sign configurations.archives
+}
+
+/**
+ * Publish to Maven Central Repository
+ */
+uploadArchives {
+  repositories {
+    mavenDeployer {
+      beforeDeployment { MavenDeployment deployment -> signing.signPom(deployment) }
+
+	  // local repository
+      repository(url: uri('build/publications/'))
+      
+      // Maven central repository
+      // http://central.maven.org/maven2/net/whenperformancematters/records/
+      //repository(url: "https://oss.sonatype.org/service/local/staging/deploy/maven2/") {
+      //  authentication(userName: ossrhUsername, password: ossrhPassword)
+      //}
+      
+      // Sonatype Snapshots
+      // https://oss.sonatype.org/content/repositories/snapshots/net/whenperformancematters/records/
+      //snapshotRepository(url: "https://oss.sonatype.org/content/repositories/snapshots/") {
+      //  authentication(userName: ossrhUsername, password: ossrhPassword)
+      //}     
+
+      pom.project {
+        packaging 'jar'
+        
+        // optionally artifactId can be defined here 
+        name 'llvm-jnr'
+        description 'Compiling LLVM IR in Java and calling it with JNR.'
+        url 'http://llvm-jnr.whenperformancematters.net'
+
+        scm {
+          connection 'scm:git:git://github.com:WhenPerformanceMatters/llvm-jnr.git'
+          developerConnection 'scm:git:ssh://github.com:WhenPerformanceMatters/llvm-jnr.git'
+          url 'https://github.com/whenperformancematters/llvm-jnr/tree/master/'
+        }
+
+        licenses {
+          license {
+            name 'MIT License'
+            url 'https://opensource.org/licenses/MIT'
+          }
+        }
+
+        developers {
+          developer {
+            id 'Neiko2002'
+            name 'Nico Hezel'
+            email 'nico@whenperformancematters.net'
+            organization 'WhenPerformanceMatters'
+            organizationUrl 'www.whenperformancematters.net'
+          }
+        }
+      }
+    }
+  }
+}
