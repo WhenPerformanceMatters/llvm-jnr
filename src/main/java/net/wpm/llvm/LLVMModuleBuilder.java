@@ -14,14 +14,14 @@ import org.bytedeco.llvm.LLVM.LLVMModuleRef;
  * @param <T>
  */
 public interface LLVMModuleBuilder<T> {
-	
+
 	/**
 	 * Build the LLVMModule
 	 * 
 	 * @return
 	 */
 	public LLVMModuleRef build();
-	
+
 	/**
 	 * An interface with identical method names and signatures than the LLVM module.
 	 * Every method in the interface must exist in the LLVM module and no static or

@@ -21,7 +21,7 @@ import org.bytedeco.llvm.global.LLVM;
 public class LLVMCompiler {
 
 	protected final BytePointer device;	
-	
+
 	/**
 	 * Setup the compiler and decide if polly should be used for loop optimizations.
 	 * 
@@ -49,7 +49,7 @@ public class LLVMCompiler {
 	public <T> LLVMProgram<T> compile(LLVMModuleBuilder<T> moduleBuilder) throws NoSuchMethodException, IllegalClassFormatException {
 		return compile(moduleBuilder, false);
 	}
-	
+
 	/**
 	 * Build the LLVM module from the moduleBuilder and optimize its code.
 	 * Compile all functions in the module and make those accessible which
@@ -66,21 +66,21 @@ public class LLVMCompiler {
 	 * @throws IllegalClassFormatException
 	 */
 	public <T> LLVMProgram<T> compile(LLVMModuleBuilder<T> moduleBuilder, boolean dumpIRCode) throws NoSuchMethodException, IllegalClassFormatException {
-		
+
 		// create and verify the LLVM code
 		LLVMModuleRef module = moduleBuilder.build();
 		if (dumpIRCode) 
 			LLVM.LLVMDumpModule(module);
 		verifyModule(module);
-		
+
 		// create an execution engine to run the module
 		LLVMExecutionEngineRef engine = createEngine(module);
 		optimizeModule(module, device);
 		jitCompileModule(engine, module, device);
-		
+
 		return new LLVMProgram<>(engine, moduleBuilder.getInvocationInferace());
 	}
-	
+
 	protected static LLVMExecutionEngineRef createEngine(LLVMModuleRef module) {
 		LLVMExecutionEngineRef engine = new LLVMExecutionEngineRef();
 		BytePointer error = new BytePointer((Pointer) null);
@@ -93,7 +93,7 @@ public class LLVMCompiler {
 		}
 		return engine;
 	}
-	
+
 	protected static void verifyModule(LLVMModuleRef module) {
 		BytePointer error = new BytePointer((Pointer) null);
 		try {
@@ -124,8 +124,8 @@ public class LLVMCompiler {
 				if (omplib != null) {
 					int error = LLVM.LLVMLoadLibraryPermanently(omplib);
 					if(error == 1)
-						
-					System.out.println("openmp error"+ error);
+
+						System.out.println("openmp error"+ error);
 				}
 				setLLVMCommandLineOptions("",
 						"-mllvm", "-polly",

@@ -37,9 +37,9 @@ import net.wpm.llvm.module.LLVMMatMulTest;
  *
  */
 public class LLVMStoredModuleBuilderTest {
-	
+
 	public static void main(String[] args) throws NoSuchMethodException, IllegalClassFormatException, FileNotFoundException, ParseException, URISyntaxException {
-		
+
 		final int M = 20, N = 20, K = 20;
 		float[] a = LLVMMatMulTest.createRandomArray(M, K);
 		float[] b = LLVMMatMulTest.createRandomArray(K, N);
@@ -52,11 +52,11 @@ public class LLVMStoredModuleBuilderTest {
 			program.invoke().matmul(a, b, c, M, N, K);
 			System.out.println("c[0]"+c[0]);
 		}
-		
+
 		LLVM.LLVMShutdown();
 		System.out.println("finished");
 	}
-	
+
 	/**
 	 * This is a invocation interface for the LLVM function in the matmul.ir file.
 	 * 

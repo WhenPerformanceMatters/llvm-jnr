@@ -25,37 +25,37 @@ public class LLVMMatMulTest {
 	static final boolean dumpLLVMCode = false;
 	static final boolean printResult = false;
 	static final int testIterations = 100;
-	
+
 	static final Random rand = new Random(7);
 
 	public static void main(String[] args) throws NoSuchMethodException, IllegalClassFormatException {
-		
-	    int SIZE = Platform.getPlatform().addressSize();
-	    System.out.println("SIZE"+SIZE);
-        long MASK = Platform.getPlatform().addressMask();
-        System.out.println("MASK"+MASK);
-        
+
+		int SIZE = Platform.getPlatform().addressSize();
+		System.out.println("SIZE"+SIZE);
+		long MASK = Platform.getPlatform().addressMask();
+		System.out.println("MASK"+MASK);
+
 		float[] a = createRandomArray(M, K);
 		float[] b = createRandomArray(K, N);
 		float[] c = new float[M * N];
 
-        MemoryIO IO = MemoryIO.getInstance();        
-        long aAddress = IO.allocateMemory(a.length * 4, false);
-        IO.putFloatArray(aAddress, a, 0, a.length);
-        long bAddress = IO.allocateMemory(b.length * 4, false);
-        IO.putFloatArray(bAddress, b, 0, b.length);
-        long cAddress = IO.allocateMemory(c.length * 4, false);
-        IO.putFloatArray(cAddress, c, 0, c.length);
-        
-        jnr.ffi.Runtime runtime = jnr.ffi.Runtime.getSystemRuntime();
-        jnr.ffi.Pointer aPtr = jnr.ffi.Pointer.wrap(runtime, aAddress);
-        jnr.ffi.Pointer bPtr = jnr.ffi.Pointer.wrap(runtime, bAddress);
-        jnr.ffi.Pointer cPtr = jnr.ffi.Pointer.wrap(runtime, cAddress);
-		
+		MemoryIO IO = MemoryIO.getInstance();        
+		long aAddress = IO.allocateMemory(a.length * 4, false);
+		IO.putFloatArray(aAddress, a, 0, a.length);
+		long bAddress = IO.allocateMemory(b.length * 4, false);
+		IO.putFloatArray(bAddress, b, 0, b.length);
+		long cAddress = IO.allocateMemory(c.length * 4, false);
+		IO.putFloatArray(cAddress, c, 0, c.length);
+
+		jnr.ffi.Runtime runtime = jnr.ffi.Runtime.getSystemRuntime();
+		jnr.ffi.Pointer aPtr = jnr.ffi.Pointer.wrap(runtime, aAddress);
+		jnr.ffi.Pointer bPtr = jnr.ffi.Pointer.wrap(runtime, bAddress);
+		jnr.ffi.Pointer cPtr = jnr.ffi.Pointer.wrap(runtime, cAddress);
+
 		LLVMMatMul moduleBuilder = new LLVMMatMul(K, M, N);
 		LLVMCompiler compiler = new LLVMCompiler(true, false);
 		try(LLVMProgram<MatMulInterface> program = compiler.compile(moduleBuilder, true)) {
-			
+
 			// warm up
 			program.invoke().matmul(aPtr, bPtr, cPtr);
 
@@ -73,7 +73,7 @@ public class LLVMMatMulTest {
 							c[0]);
 			printArray(c);
 		}
-		
+
 		LLVM.LLVMShutdown();
 		System.out.println("finished");
 	}

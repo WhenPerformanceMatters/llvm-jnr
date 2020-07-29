@@ -15,29 +15,29 @@ import jnr.ffi.LibraryOption;
  * @param <T>
  */
 public class LLVMModuleLoader<T>  extends jnr.ffi.LibraryLoader<T> {
-    static final boolean ASM_ENABLED = getBooleanProperty("jnr.ffi.asm.enabled", true);
+	static final boolean ASM_ENABLED = getBooleanProperty("jnr.ffi.asm.enabled", true);
 
-    protected final Map<String, Long> funcNameToAddress;
-    
-    public LLVMModuleLoader(Class<T> interfaceClass, Map<String, Long> funcNameToAddress) {
-        super(interfaceClass);
-        this.funcNameToAddress = funcNameToAddress;
-    }
+	protected final Map<String, Long> funcNameToAddress;
 
-    @Override
-    public T loadLibrary(Class<T> interfaceClass, Collection<String> libraryNames, Collection<String> searchPaths, Map<LibraryOption, Object> options, boolean failImmediately) {
-    	final LLVMSymbolLibrary nativeLibrary = new LLVMSymbolLibrary(funcNameToAddress);
+	public LLVMModuleLoader(Class<T> interfaceClass, Map<String, Long> funcNameToAddress) {
+		super(interfaceClass);
+		this.funcNameToAddress = funcNameToAddress;
+	}
 
-        try {
-            return ASM_ENABLED
-                ? new AsmLibraryLoader().loadLibrary(nativeLibrary, interfaceClass, options, failImmediately)
-                : new ReflectionLibraryLoader().loadLibrary(nativeLibrary, interfaceClass, options, failImmediately);
+	@Override
+	public T loadLibrary(Class<T> interfaceClass, Collection<String> libraryNames, Collection<String> searchPaths, Map<LibraryOption, Object> options, boolean failImmediately) {
+		final LLVMSymbolLibrary nativeLibrary = new LLVMSymbolLibrary(funcNameToAddress);
 
-        } catch (RuntimeException ex) {
-            throw ex;
+		try {
+			return ASM_ENABLED
+					? new AsmLibraryLoader().loadLibrary(nativeLibrary, interfaceClass, options, failImmediately)
+							: new ReflectionLibraryLoader().loadLibrary(nativeLibrary, interfaceClass, options, failImmediately);
 
-        } catch (Exception ex) {
-            throw new RuntimeException(ex);
-        }
-    }
+		} catch (RuntimeException ex) {
+			throw ex;
+
+		} catch (Exception ex) {
+			throw new RuntimeException(ex);
+		}
+	}
 }

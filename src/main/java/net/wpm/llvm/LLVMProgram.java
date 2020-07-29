@@ -40,13 +40,13 @@ public class LLVMProgram<T> implements AutoCloseable {
 	protected final LLVMExecutionEngineRef engine;
 	protected final T invokationInterface;
 	protected final Map<String, Long> funcNameToAddress;
-	
+
 	public LLVMProgram(LLVMExecutionEngineRef engine, Class<T> invocationInterface) throws NoSuchMethodException, IllegalClassFormatException {
 		this.engine = engine;
-		
+
 		// check if all methods in the invocation class exist in the LLVM engine
 		Collection<String> funcNames = verifyInvocationInterface(engine, invocationInterface);
-		
+
 		// setup a JNR invocation interface
 		funcNameToAddress = new HashMap<>();
 		for (String funcName : funcNames) {
@@ -56,7 +56,7 @@ public class LLVMProgram<T> implements AutoCloseable {
 		LibraryLoader<T> libraryLoader = new LLVMModuleLoader<T>(invocationInterface, funcNameToAddress);
 		invokationInterface = libraryLoader.load("llvm");
 	}
-	
+
 	public long getAddress(String funcName) {
 		return this.funcNameToAddress.get(funcName);
 	}
@@ -71,7 +71,7 @@ public class LLVMProgram<T> implements AutoCloseable {
 
 	public void dispose() {
 		if(engine != null) {
-			
+
 			// Disposes all modules as well. No need to call LLVMDisposeModule()
 			// https://stackoverflow.com/questions/27103943/llvm-api-correct-way-to-create-dispose#comment42836250_27169381
 			LLVM.LLVMDisposeExecutionEngine(engine);
@@ -83,7 +83,7 @@ public class LLVMProgram<T> implements AutoCloseable {
 		dispose();
 	}
 
-	
+
 	/**
 	 * Check if the LLVM module has the same function names and functions signatures than the invocation class.
 	 * 
@@ -96,18 +96,18 @@ public class LLVMProgram<T> implements AutoCloseable {
 		Set<String> funcNames = new HashSet<>();
 		for (Method method : invocationClass.getMethods()) {
 			final String funcName = method.getName();
-			
+
 			// no method overloading is allowed in the invocation class
 			if(funcNames.contains(funcName))
 				throw new IllegalClassFormatException("Method overloading is allowed in LLVM invocation class got "+invocationClass.getCanonicalName()+"#"+funcName+" at least twice.");
 			funcNames.add(funcName);
-			
+
 			// every method in the invocation class must exist in the module
 			LLVMValueRef func = new LLVMValueRef();
 			int error = LLVM.LLVMFindFunction(engine, new BytePointer(funcName), func);
 			if(error == 1)
 				throw new NoSuchMethodException("Every method in the LLVm invocation class must be in the LLVM IR. Missing "+funcName);
-			
+
 			// the signature of the method must be the same
 			LLVMTypeRef funcType = LLVM.LLVMTypeOf(func);
 
@@ -121,15 +121,15 @@ public class LLVMProgram<T> implements AutoCloseable {
 			// check the type, should be a function
 			if(k != LLVM.LLVMFunctionTypeKind)
 				throw new IllegalArgumentException("Expected a function in LLVM IR under the name "+funcName+" but got a "+getTypekindName(k));
-			
+
 			// get java input parameters
 			final Parameter[] parameters = method.getParameters();
-			
+
 			// get the type count of the input parameters from the LLVM IR function
 			final int parameterCount = LLVM.LLVMCountParamTypes(funcType);
 			if(parameterCount != parameters.length)
 				throw new IllegalArgumentException("Expected the LLVM IR function "+funcName+" to have "+parameters.length+" input parameters, but got "+parameterCount);
-			
+
 			// get the types of the input parameters from the LLVM IR function
 			PointerPointer<LLVMTypeRef> ptr = new PointerPointer<>(new LLVMTypeRef[parameterCount]);
 			LLVM.LLVMGetParamTypes(funcType, ptr);				
@@ -143,13 +143,13 @@ public class LLVMProgram<T> implements AutoCloseable {
 			LLVMTypeRef returnType = LLVM.LLVMGetReturnType(funcType);
 			if(checkLLVMTypeCompatibility(returnType, method.getReturnType()) == false)
 				throw new IllegalArgumentException("Expected the LLVM IR function "+funcName+" to have the return type "+method.getReturnType());
-			
+
 		}
-		
+
 		// return a list of valid function names that exists in the module and the invocation class
 		return funcNames;
 	}
-	
+
 	/**
 	 * Return string name for a LLVMTypeKind. Useful for debugging.
 	 * https://github.com/anholt/mesa/blob/master/src/gallium/auxiliary/gallivm/lp_bld_type.c#L287
@@ -191,7 +191,7 @@ public class LLVMProgram<T> implements AutoCloseable {
 			return "unknown LLVMTypeKind";
 		}
 	}
-	
+
 	/**
 	 * Check if the LLVM type is compatible with the java type
 	 * 
@@ -202,7 +202,7 @@ public class LLVMProgram<T> implements AutoCloseable {
 	protected static boolean checkLLVMTypeCompatibility(LLVMTypeRef llvmType, Class<?> javaType) 
 	{
 		int typeKind = LLVM.LLVMGetTypeKind(llvmType);
-		
+
 		// check for LLVMVoidTypeKind, LLVMFloatTypeKind, LLVMDoubleTypeKind, LLVMIntegerTypeKind
 		if(typeKind == LLVM.LLVMVoidTypeKind && javaType == void.class)
 			return true;
@@ -228,7 +228,7 @@ public class LLVMProgram<T> implements AutoCloseable {
 		} else if(typeKind == LLVM.LLVMPointerTypeKind && javaType == Pointer.class) {
 			return true;
 		}
-		
+
 		return false;
 	}
 }

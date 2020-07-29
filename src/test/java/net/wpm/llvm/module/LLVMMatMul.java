@@ -54,26 +54,26 @@ import net.wpm.llvm.LLVMModuleBuilder;
  * @author Nico Hezel
  */
 public class LLVMMatMul implements LLVMModuleBuilder<LLVMMatMul.MatMulInterface> {
-	
+
 	protected final LLVMTypeRef llvmVoidType;
 	protected final LLVMTypeRef llvmInt32Type;
 	protected final LLVMTypeRef llvmFloatType;
 	protected final LLVMTypeRef llvmFloatPointerType;
-	
+
 	protected final int K;
 	protected final int M;
 	protected final int N;
-	
+
 
 	public LLVMMatMul(int K, int M, int N) {
 		this.K = K;
 		this.M = M;
 		this.N = N;
-		
+
 		llvmVoidType = LLVMVoidType();
 		llvmInt32Type = LLVMInt32Type();
 		llvmFloatType = LLVMFloatType();
-		
+
 		// Sequential types represents "arrays" of types.
 		// This is a super class for array, vector, and pointer types.
 		// https://llvm.org/doxygen/group__LLVMCCoreTypeSequential.html
@@ -205,9 +205,9 @@ public class LLVMMatMul implements LLVMModuleBuilder<LLVMMatMul.MatMulInterface>
 	protected LLVMValueRef toConstFloat(float v) {
 		return LLVMConstReal(llvmFloatType, v);
 	}
-	
+
 	public static interface MatMulInterface {
-//		public void matmul(float[] a, float[] b, float[] c);
+		//		public void matmul(float[] a, float[] b, float[] c);
 		public void matmul(Pointer a, Pointer b, Pointer c);
 	}
 

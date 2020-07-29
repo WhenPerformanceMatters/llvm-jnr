@@ -10,19 +10,19 @@ import java.util.Map;
  */
 public class LLVMSymbolLibrary extends NativeLibrary {
 
-    protected final Map<String, Long> funcNameToAddress;
-	
+	protected final Map<String, Long> funcNameToAddress;
+
 	LLVMSymbolLibrary(Map<String, Long> funcNameToAddress) {
 		super(Collections.emptyList(), Collections.emptyList());
 		this.funcNameToAddress = funcNameToAddress;
 	}
-	
-    public long getSymbolAddress(String name) {
-        return funcNameToAddress.getOrDefault(name, -1L);
-    }
 
-    long findSymbolAddress(String name) {
-        return funcNameToAddress.getOrDefault(name, -1L);
-    }
+	public long getSymbolAddress(String name) {
+		return funcNameToAddress.getOrDefault(name, -1L);
+	}
+
+	long findSymbolAddress(String name) {
+		return funcNameToAddress.getOrDefault(name, -1L);
+	}
 }
 

@@ -81,107 +81,107 @@ import net.wpm.llvm.LLVMStoredModuleBuilder;
  */
 public class MatMulBenchmark {
 
-    static final int M = 20, N = 20, K = 20;
-    static final boolean usePolly = true;
-    static final boolean usePollyParallel = false;
-    static final boolean printResult = false;
-    static final int testIterations = 100;
+	static final int M = 20, N = 20, K = 20;
+	static final boolean usePolly = true;
+	static final boolean usePollyParallel = false;
+	static final boolean printResult = false;
+	static final int testIterations = 100;
 
 	static final Random rand = new Random(7);
-	
 
-    public static void main(String[] args) throws Throwable {    	
-        float[] a = createRandomArray(M, K);
-        float[] b = createRandomArray(K, N);
-        float[] c = new float[M * N];
 
-//        benchmarkMKL(a, b, c);
-//        benchmarkLLVMJNR(a, b, c);
-        benchmarkLLVMJNA(a, b, c);
-//        benchmarkPureJava(a, b, c);
-        
-        System.out.println("Finished.");
-    }
+	public static void main(String[] args) throws Throwable {    	
+		float[] a = createRandomArray(M, K);
+		float[] b = createRandomArray(K, N);
+		float[] c = new float[M * N];
 
-    static void benchmarkMKL(float[] a, float[] b, float[] c) {
-        Pointer jitter = new Pointer();
-        mkl_cblas_jit_create_sgemm(jitter, CblasRowMajor, CblasNoTrans, CblasNoTrans, M, N, K, 1.0f, K, N, 0.0f, N);
-        sgemm_jit_kernel_t sgemm = mkl_jit_get_sgemm_ptr(jitter);
+		benchmarkMKL(a, b, c);
+		benchmarkLLVMJNR(a, b, c);
+		benchmarkLLVMJNA(a, b, c);
+		benchmarkPureJava(a, b, c);
 
-        FloatPointer A = new FloatPointer(a);
-        FloatPointer B = new FloatPointer(b);
-        FloatPointer C = new FloatPointer(c);
+		System.out.println("Finished.");
+	}
 
-        mkl_rt.MKL_Set_Num_Threads(usePollyParallel ? 8 : 1);
-        
-        // warm up
-        sgemm.call(jitter, A, B, C);
-        
-        long start = System.nanoTime();
-        for (int i = 0; i < testIterations; i++) 
-            sgemm.call(jitter, A, B, C);
-        long end = System.nanoTime();
-        System.out.printf("MKL: %fms. c[0] = %f\n", (end - start) / (testIterations * 1000d * 1000d), C.get(0));
+	static void benchmarkMKL(float[] a, float[] b, float[] c) {
+		Pointer jitter = new Pointer();
+		mkl_cblas_jit_create_sgemm(jitter, CblasRowMajor, CblasNoTrans, CblasNoTrans, M, N, K, 1.0f, K, N, 0.0f, N);
+		sgemm_jit_kernel_t sgemm = mkl_jit_get_sgemm_ptr(jitter);
 
-        mkl_jit_destroy(jitter);
-    }
+		FloatPointer A = new FloatPointer(a);
+		FloatPointer B = new FloatPointer(b);
+		FloatPointer C = new FloatPointer(c);
 
-    static void benchmarkPureJava(float[] a, float[] b, float[] c) {
-        assert a.length == M * K;
-        assert b.length == K * N;
-        assert c.length == M * N;
-        
-        // warm up
-        sgemmJava(a, b, c, M, N, K);
-        
-        long start = System.nanoTime();
-        for (int i = 0; i < testIterations; i++) 
-        	sgemmJava(a, b, c, M, N, K);
-        long end = System.nanoTime();
-        System.out.printf("Pure Java: %fms. c[0] = %f\n", (end - start) / (testIterations * 1000d * 1000d), c[0]);
-        printArray(c);
-    }
-    
-    static void sgemmJava(float[] a, float[] b, float[] c, int M, int N, int K) {
-    	for (int m = 0; m < M; m++) {
-    		for (int n = 0; n < N; n++) {
-    			float s = 0;
-    			for (int k = 0; k < K; k++) {
-    				s += a[m * K + k] * b[k * N + n];
-    			}
-    			c[m * N + n] = s;
-    		}
-    	}
-    }
+		mkl_rt.MKL_Set_Num_Threads(usePollyParallel ? 8 : 1);
 
-    static void benchmarkLLVMJNR(float[] a, float[] b, float[] c) throws Throwable {
-        assert a.length == M * K;
-        assert b.length == K * N;
-        assert c.length == M * N;
-                
-        jnr.ffi.Runtime runtime = jnr.ffi.Runtime.getSystemRuntime();        
-        jnr.ffi.Pointer aPtr = jnr.ffi.Memory.allocateDirect(runtime, a.length * 4, false);
-        jnr.ffi.Pointer bPtr = jnr.ffi.Memory.allocateDirect(runtime, a.length * 4, false);
-        jnr.ffi.Pointer cPtr = jnr.ffi.Memory.allocateDirect(runtime, a.length * 4, false);
-        
-        aPtr.put(0, a, 0, a.length);
-        bPtr.put(0, b, 0, b.length);
-        cPtr.put(0, c, 0, c.length);
-        
-        // The code in the file containing code is for M,N,K = 20.
-    	Path file = Paths.get(MatMulBenchmark.class.getResource((M == 20) ? "matmul20.ir" : "matmul2000.ir").toURI());
+		// warm up
+		sgemm.call(jitter, A, B, C);
+
+		long start = System.nanoTime();
+		for (int i = 0; i < testIterations; i++) 
+			sgemm.call(jitter, A, B, C);
+		long end = System.nanoTime();
+		System.out.printf("MKL: %fms. c[0] = %f\n", (end - start) / (testIterations * 1000d * 1000d), C.get(0));
+
+		mkl_jit_destroy(jitter);
+	}
+
+	static void benchmarkPureJava(float[] a, float[] b, float[] c) {
+		assert a.length == M * K;
+		assert b.length == K * N;
+		assert c.length == M * N;
+
+		// warm up
+		sgemmJava(a, b, c, M, N, K);
+
+		long start = System.nanoTime();
+		for (int i = 0; i < testIterations; i++) 
+			sgemmJava(a, b, c, M, N, K);
+		long end = System.nanoTime();
+		System.out.printf("Pure Java: %fms. c[0] = %f\n", (end - start) / (testIterations * 1000d * 1000d), c[0]);
+		printArray(c);
+	}
+
+	static void sgemmJava(float[] a, float[] b, float[] c, int M, int N, int K) {
+		for (int m = 0; m < M; m++) {
+			for (int n = 0; n < N; n++) {
+				float s = 0;
+				for (int k = 0; k < K; k++) {
+					s += a[m * K + k] * b[k * N + n];
+				}
+				c[m * N + n] = s;
+			}
+		}
+	}
+
+	static void benchmarkLLVMJNR(float[] a, float[] b, float[] c) throws Throwable {
+		assert a.length == M * K;
+		assert b.length == K * N;
+		assert c.length == M * N;
+
+		jnr.ffi.Runtime runtime = jnr.ffi.Runtime.getSystemRuntime();        
+		jnr.ffi.Pointer aPtr = jnr.ffi.Memory.allocateDirect(runtime, a.length * 4, false);
+		jnr.ffi.Pointer bPtr = jnr.ffi.Memory.allocateDirect(runtime, a.length * 4, false);
+		jnr.ffi.Pointer cPtr = jnr.ffi.Memory.allocateDirect(runtime, a.length * 4, false);
+
+		aPtr.put(0, a, 0, a.length);
+		bPtr.put(0, b, 0, b.length);
+		cPtr.put(0, c, 0, c.length);
+
+		// The code in the file containing code is for M,N,K = 20.
+		Path file = Paths.get(MatMulBenchmark.class.getResource((M == 20) ? "matmul20.ir" : "matmul2000.ir").toURI());
 		LLVMStoredModuleBuilder<MatMulInterface> moduleBuilder = new LLVMStoredModuleBuilder<>(file, MatMulInterface.class);
 		LLVMCompiler compiler = new LLVMCompiler(true, false);
 		try(LLVMProgram<MatMulInterface> program = compiler.compile(moduleBuilder)) {	
-				        
-            // warm up
+
+			// warm up
 			program.invoke().matmul(aPtr, bPtr, cPtr);
-			
+
 			long start = System.nanoTime();
 			for (int i = 0; i < testIterations; i++) 
 				program.invoke().matmul(aPtr, bPtr, cPtr);
 			long end = System.nanoTime();
-			
+
 			cPtr.get(0, c, 0, c.length);
 			System.out.printf("LLVM%s: %fms. c[0] = %f\n",
 					usePolly ? " with Polly" : " without Polly",
@@ -189,33 +189,33 @@ public class MatMulBenchmark {
 							c[0]);
 			printArray(c);
 		}
-    }
-    
-    static void benchmarkLLVMJNA(float[] a, float[] b, float[] c) throws Throwable {
-        assert a.length == M * K;
-        assert b.length == K * N;
-        assert c.length == M * N;
-        
-        com.sun.jna.Memory aPtr = new com.sun.jna.Memory(a.length * 4);
-        aPtr.getByteBuffer(0, aPtr.size()).order(ByteOrder.nativeOrder()).asFloatBuffer().put(a);
-        
-        com.sun.jna.Memory bPtr = new com.sun.jna.Memory(b.length * 4);
-        bPtr.getByteBuffer(0, bPtr.size()).order(ByteOrder.nativeOrder()).asFloatBuffer().put(b);
-        
-        com.sun.jna.Memory cPtr = new com.sun.jna.Memory(c.length * 4);
-        cPtr.getByteBuffer(0, cPtr.size()).order(ByteOrder.nativeOrder()).asFloatBuffer().put(c);
-        
-        
-        // The code in the file containing code is for M,N,K = 20.
-    	Path file = Paths.get(MatMulBenchmark.class.getResource((M == 20) ? "matmul20.ir" : "matmul2000.ir").toURI());
+	}
+
+	static void benchmarkLLVMJNA(float[] a, float[] b, float[] c) throws Throwable {
+		assert a.length == M * K;
+		assert b.length == K * N;
+		assert c.length == M * N;
+
+		com.sun.jna.Memory aPtr = new com.sun.jna.Memory(a.length * 4);
+		aPtr.getByteBuffer(0, aPtr.size()).order(ByteOrder.nativeOrder()).asFloatBuffer().put(a);
+
+		com.sun.jna.Memory bPtr = new com.sun.jna.Memory(b.length * 4);
+		bPtr.getByteBuffer(0, bPtr.size()).order(ByteOrder.nativeOrder()).asFloatBuffer().put(b);
+
+		com.sun.jna.Memory cPtr = new com.sun.jna.Memory(c.length * 4);
+		cPtr.getByteBuffer(0, cPtr.size()).order(ByteOrder.nativeOrder()).asFloatBuffer().put(c);
+
+
+		// The code in the file containing code is for M,N,K = 20.
+		Path file = Paths.get(MatMulBenchmark.class.getResource((M == 20) ? "matmul20.ir" : "matmul2000.ir").toURI());
 		LLVMStoredModuleBuilder<MatMulInterface> moduleBuilder = new LLVMStoredModuleBuilder<>(file, MatMulInterface.class);
 		LLVMCompiler compiler = new LLVMCompiler(true, false);
 		try(LLVMProgram<MatMulInterface> program = compiler.compile(moduleBuilder)) {	
-			 com.sun.jna.Function func = com.sun.jna.Function.getFunction(new com.sun.jna.Pointer(program.getAddress("matmul")));
-			 
-            // warm up
+			com.sun.jna.Function func = com.sun.jna.Function.getFunction(new com.sun.jna.Pointer(program.getAddress("matmul")));
+
+			// warm up
 			func.invoke(Void.class, new Object[]{aPtr, bPtr, cPtr});
-			
+
 			long start = System.nanoTime();
 			for (int i = 0; i < testIterations; i++) 
 				func.invoke(Void.class, new Object[]{aPtr, bPtr, cPtr});
@@ -228,25 +228,25 @@ public class MatMulBenchmark {
 							c[0]);
 			printArray(c);
 		}
-    }
+	}
 
-    static float[] createRandomArray(int m, int n) {
-        float[] ary = new float[m * n];
-        for (int i = 0; i < ary.length; i++) {
-            ary[i] = rand.nextFloat();
-        }
-        return ary;
-    }
+	static float[] createRandomArray(int m, int n) {
+		float[] ary = new float[m * n];
+		for (int i = 0; i < ary.length; i++) {
+			ary[i] = rand.nextFloat();
+		}
+		return ary;
+	}
 
-    static void printArray(float[] ary) {
-        if (printResult) {
-            for (float v : ary) {
-                System.out.println(v);
-            }
-        }
-    }
-    
-    /**
+	static void printArray(float[] ary) {
+		if (printResult) {
+			for (float v : ary) {
+				System.out.println(v);
+			}
+		}
+	}
+
+	/**
 	 * This is a invocation interface for the LLVM function in the IR file.
 	 * 
 	 * @author Nico Hezel

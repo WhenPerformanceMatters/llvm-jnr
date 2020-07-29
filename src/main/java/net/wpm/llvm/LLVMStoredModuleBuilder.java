@@ -24,13 +24,13 @@ public class LLVMStoredModuleBuilder<T> implements LLVMModuleBuilder<T> {
 
 	protected final LLVMModuleRef outModule;
 	protected final Class<T> invocationInterface;
-		
+
 	public LLVMStoredModuleBuilder(Path file, Class<T> invocationInterface) throws FileNotFoundException, ParseException {
 		LLVMMemoryBufferRef memory = readFile(file);
 		this.outModule = parseIR(memory);
 		this.invocationInterface = invocationInterface;
 	}
-	
+
 	/**
 	 * Read the content of the file and copy it into a memory buffer
 	 * 
@@ -51,7 +51,7 @@ public class LLVMStoredModuleBuilder<T> implements LLVMModuleBuilder<T> {
 		}
 		return memory;
 	}
-	
+
 	/**
 	 * Read and parse the LLVM IR from the memory buffer to create an in-memory module object.
 	 *  
@@ -72,12 +72,12 @@ public class LLVMStoredModuleBuilder<T> implements LLVMModuleBuilder<T> {
 		}
 		return outModule;
 	}
-	
+
 	@Override
 	public LLVMModuleRef build() {
 		return outModule;
 	}
-	
+
 	@Override
 	public Class<T> getInvocationInferace() {
 		return this.invocationInterface;

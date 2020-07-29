@@ -16,14 +16,14 @@ import net.wpm.llvm.module.LLVMFac.FacInterface;
 public class LLVMFacTest {
 
 	public static void main(String[] args) throws NoSuchMethodException, IllegalClassFormatException {
-		
+
 		LLVMFac moduleBuilder = new LLVMFac();
 		LLVMCompiler compiler = new LLVMCompiler(true, false);
 		try(LLVMProgram<FacInterface> program = compiler.compile(moduleBuilder, true)) {
 			int result = program.invoke().fac(10);
 			System.out.println(result);
 		}
-		
+
 		LLVM.LLVMShutdown();
 		System.out.println("finished");
 	}
