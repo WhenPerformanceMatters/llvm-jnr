@@ -98,7 +98,7 @@ public class LLVMFac implements LLVMModuleBuilder<LLVMFac.FacInterface> {
 	}
 
 	@Override
-	public Class<FacInterface> getInvocationInferace() {
+	public Class<FacInterface> getInvocationInterface() {
 		return FacInterface.class;
 	}
 }

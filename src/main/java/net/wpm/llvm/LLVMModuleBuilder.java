@@ -11,14 +11,14 @@ import org.bytedeco.llvm.LLVM.LLVMModuleRef;
  * 
  * @author Nico Hezel
  *
- * @param <T>
+ * @param <T> Invocation interface 
  */
 public interface LLVMModuleBuilder<T> {
 
 	/**
 	 * Build the LLVMModule
 	 * 
-	 * @return
+	 * @return a LLVM module
 	 */
 	public LLVMModuleRef build();
 
@@ -29,6 +29,6 @@ public interface LLVMModuleBuilder<T> {
 	 * 
 	 * @return a class object to a java interface
 	 */
-	public Class<T> getInvocationInferace();
+	public Class<T> getInvocationInterface();
 
 }

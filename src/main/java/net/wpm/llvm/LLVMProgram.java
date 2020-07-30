@@ -33,14 +33,23 @@ import jnr.ffi.provider.jffi.LLVMModuleLoader;
  * 
  * @author Nico Hezel
  *
- * @param <T>
+ * @param <T> invocation interface 
  */
 public class LLVMProgram<T> implements AutoCloseable {
 
 	protected final LLVMExecutionEngineRef engine;
-	protected final T invokationInterface;
+	protected final T invocationInterface;
 	protected final Map<String, Long> funcNameToAddress;
 
+	/**
+	 * A wrapper around the machine code in LLVM execution engine. The interface provides function names and signature 
+	 * to the symbols in the engine.
+	 * 
+	 * @param engine LLVM execution engine containing compiled LLVM machine code
+	 * @param invocationInterface invocation interface with method names and signature identical to the functions in the engine
+	 * @throws IllegalClassFormatException if the invocation interface has invalid statements like overloaded methods
+	 * @throws NoSuchMethodException if the LLVM code does not contain all the functions as in the invocation interface
+	 */
 	public LLVMProgram(LLVMExecutionEngineRef engine, Class<T> invocationInterface) throws NoSuchMethodException, IllegalClassFormatException {
 		this.engine = engine;
 
@@ -54,21 +63,32 @@ public class LLVMProgram<T> implements AutoCloseable {
 			funcNameToAddress.put(funcName, fnAddr);
 		}
 		LibraryLoader<T> libraryLoader = new LLVMModuleLoader<T>(invocationInterface, funcNameToAddress);
-		invokationInterface = libraryLoader.load("llvm");
+		this.invocationInterface = libraryLoader.load("llvm");
 	}
 
+	/**
+	 * Find the symbol in the LLVM machine code and return the native address to this function
+	 * 
+	 * @param funcName name of a symbol in the LLVM machine code
+	 * @return address to the symbol
+	 */
 	public long getAddress(String funcName) {
 		return this.funcNameToAddress.get(funcName);
 	}
 
 	/**
-	 * Invoke the method of the program
-	 * @return
+	 * Implementation of the invocation interface, every call to a method in this class 
+	 * will invoke a function with the same name and signature in the native space.
+	 * 
+	 * @return implementation of the invocation interface 
 	 */
 	public T invoke() {
-		return invokationInterface;
+		return invocationInterface;
 	}
 
+	/**
+	 * Dispose the machine code in the LLVM execution engine. The {@link LLVMProgram#invoke()} method will not work anymore afterwards.
+	 */
 	public void dispose() {
 		if(engine != null) {
 
@@ -87,19 +107,22 @@ public class LLVMProgram<T> implements AutoCloseable {
 	/**
 	 * Check if the LLVM module has the same function names and functions signatures than the invocation class.
 	 * 
-	 * @param <T>
-	 * @param module
-	 * @param invocationClass
+	 * @param <T> invocation interface 
+	 * @param engine LLVM execution engine containing compiled LLVM machine code
+	 * @param invocationInterface invocation interface with method names and signature identical to the functions in the engine
+	 * @return a collection of all valid functions in the native space
+	 * @throws IllegalClassFormatException if the invocation interface has invalid statements like overloaded methods
+	 * @throws NoSuchMethodException if the LLVM code does not contain all the functions as in the invocation interface
 	 */
-	protected static <T> Collection<String> verifyInvocationInterface(LLVMExecutionEngineRef engine, Class<T> invocationClass) throws IllegalClassFormatException, NoSuchMethodException {
+	protected static <T> Collection<String> verifyInvocationInterface(LLVMExecutionEngineRef engine, Class<T> invocationInterface) throws IllegalClassFormatException, NoSuchMethodException {
 
 		Set<String> funcNames = new HashSet<>();
-		for (Method method : invocationClass.getMethods()) {
+		for (Method method : invocationInterface.getMethods()) {
 			final String funcName = method.getName();
 
 			// no method overloading is allowed in the invocation class
 			if(funcNames.contains(funcName))
-				throw new IllegalClassFormatException("Method overloading is allowed in LLVM invocation class got "+invocationClass.getCanonicalName()+"#"+funcName+" at least twice.");
+				throw new IllegalClassFormatException("Method overloading is allowed in LLVM invocation class got "+invocationInterface.getCanonicalName()+"#"+funcName+" at least twice.");
 			funcNames.add(funcName);
 
 			// every method in the invocation class must exist in the module
@@ -153,6 +176,9 @@ public class LLVMProgram<T> implements AutoCloseable {
 	/**
 	 * Return string name for a LLVMTypeKind. Useful for debugging.
 	 * https://github.com/anholt/mesa/blob/master/src/gallium/auxiliary/gallivm/lp_bld_type.c#L287
+	 *
+	 * @param typeKind LLVM type kind
+	 * @return string representation of the LVM type kind
 	 */
 	protected static String getTypekindName(int typeKind)
 	{
@@ -195,9 +221,9 @@ public class LLVMProgram<T> implements AutoCloseable {
 	/**
 	 * Check if the LLVM type is compatible with the java type
 	 * 
-	 * @param llvmType
-	 * @param javaType
-	 * @return
+	 * @param llvmType LLVM type
+	 * @param javaType Java type
+	 * @return are both types compatible
 	 */
 	protected static boolean checkLLVMTypeCompatibility(LLVMTypeRef llvmType, Class<?> javaType) 
 	{

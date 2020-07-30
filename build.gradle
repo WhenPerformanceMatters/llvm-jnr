@@ -7,8 +7,16 @@ plugins {
 	id 'me.champeau.gradle.jmh' version '0.5.0'
 }
 
+// Java compatibility
 sourceCompatibility = targetCompatibility = 1.14
+// character encoding
 tasks.withType(AbstractCompile)*.options*.encoding = "UTF-8"
+
+
+// group and version of the project 
+version = '1.0.0-SNAPSHOT'
+group = 'net.whenperformancematters'
+archivesBaseName = "llvm-jnr"
 
 jmh {
 	jmhVersion = '1.23' 

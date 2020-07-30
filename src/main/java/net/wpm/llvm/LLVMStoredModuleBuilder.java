@@ -14,11 +14,32 @@ import org.bytedeco.llvm.global.LLVM;
 
 /**
  * Read and parse the content of a text file containing LLVM IR code.
- * Creates a LLVM module and provides it via the {@link LLVMModuleBuilder#build()} method.
+ * Creates a LLVM module and provides it via the {@link LLVMModuleBuilder#build()} method.  
+ * <br><br>
+ * In order to get LLVM IR use a clang compiler or this website
+ * <a href="http://ellcc.org/demo/index.cgi">http://ellcc.org/demo/index.cgi</a>
+ * e.g. paste this c code in there
+ * 
+ * <pre>
+ * {@code
+ * void matmul(const float *a, const float *b, float *c, const int M, const int N, const int K)
+ * {
+ *	for (int m = 0; m < M; m++) {
+ *		for (int n = 0; n < N; n++) {
+ * 			float s = 0;
+ * 			for (int k = 0; k < K; k++) {
+ * 				s += a[m * K + k] * b[k * N + n];
+ * 			}
+ * 			c[m * N + n] = s;
+ * 		}
+ *	}
+ * }
+ * }
+ * </pre>
  * 
  * @author Nico Hezel
  *
- * @param <T>
+ * @param <T> invocation interface 
  */
 public class LLVMStoredModuleBuilder<T> implements LLVMModuleBuilder<T> {
 
@@ -34,9 +55,9 @@ public class LLVMStoredModuleBuilder<T> implements LLVMModuleBuilder<T> {
 	/**
 	 * Read the content of the file and copy it into a memory buffer
 	 * 
-	 * @param file
-	 * @return
-	 * @throws FileNotFoundException
+	 * @param file path to the IR
+	 * @return memory filled with the content of the file
+	 * @throws FileNotFoundException path to the file is invalid
 	 */
 	protected static LLVMMemoryBufferRef readFile(Path file) throws FileNotFoundException {
 		BytePointer path = new BytePointer(file.toString());
@@ -55,9 +76,9 @@ public class LLVMStoredModuleBuilder<T> implements LLVMModuleBuilder<T> {
 	/**
 	 * Read and parse the LLVM IR from the memory buffer to create an in-memory module object.
 	 *  
-	 * @param memory
-	 * @return
-	 * @throws ParseException
+	 * @param memory filled IR code
+	 * @return LLVM module of the IR code
+	 * @throws ParseException unable to parse the IR code
 	 */
 	protected static LLVMModuleRef parseIR(LLVMMemoryBufferRef memory) throws ParseException {
 		LLVMContextRef context = LLVM.LLVMGetGlobalContext();
@@ -79,7 +100,7 @@ public class LLVMStoredModuleBuilder<T> implements LLVMModuleBuilder<T> {
 	}
 
 	@Override
-	public Class<T> getInvocationInferace() {
+	public Class<T> getInvocationInterface() {
 		return this.invocationInterface;
 	}
 }

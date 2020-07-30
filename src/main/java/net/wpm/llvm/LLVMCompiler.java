@@ -25,8 +25,8 @@ public class LLVMCompiler {
 	/**
 	 * Setup the compiler and decide if polly should be used for loop optimizations.
 	 * 
-	 * @param usePolly
-	 * @param usePollyParallel
+	 * @param usePolly use polly optimization or not
+	 * @param usePollyParallel use polly parallel optimization or not
 	 */
 	public LLVMCompiler(boolean usePolly, boolean usePollyParallel) {
 		initialize(usePolly, usePollyParallel);
@@ -36,15 +36,16 @@ public class LLVMCompiler {
 	/**
 	 * Build the LLVM module from the moduleBuilder and optimize its code.
 	 * Compile all functions in the module and make those accessible which
-	 * are defined in the invocation interface see {@link LLVMModuleBuilder#getInvocationInferace()}.
+	 * are defined in the invocation interface see {@link LLVMModuleBuilder#getInvocationInterface()}.
 	 * 
 	 * This methods returns an {@link LLVMProgram} containing the LLVM module and java code to call 
 	 * native functions inside of this module. The program must be disposed when no longer used. 
 	 *  
-	 * @param moduleBuilder
+	 * @param <T> invocation interface 
+	 * @param moduleBuilder module builder 
 	 * @return the {@link LLVMProgram} provides access to the LLVM functions and should be disposed when no longer needed.
-	 * @throws NoSuchMethodException
-	 * @throws IllegalClassFormatException
+	 * @throws IllegalClassFormatException if the invocation interface has invalid statements like overloaded methods
+	 * @throws NoSuchMethodException if the LLVM code does not contain all the functions as in the invocation interface
 	 */
 	public <T> LLVMProgram<T> compile(LLVMModuleBuilder<T> moduleBuilder) throws NoSuchMethodException, IllegalClassFormatException {
 		return compile(moduleBuilder, false);
@@ -53,17 +54,17 @@ public class LLVMCompiler {
 	/**
 	 * Build the LLVM module from the moduleBuilder and optimize its code.
 	 * Compile all functions in the module and make those accessible which
-	 * are defined in the invocation interface see {@link LLVMModuleBuilder#getInvocationInferace()}.
+	 * are defined in the invocation interface see {@link LLVMModuleBuilder#getInvocationInterface()}.
 	 * 
 	 * This methods returns an {@link LLVMProgram} containing the LLVM module and java code to call 
 	 * native functions inside of this module. The program must be disposed when no longer used. 
 	 *  
-	 * @param <T>
-	 * @param moduleBuilder
+	 * @param <T> invocation interface 
+	 * @param moduleBuilder module builder 
 	 * @param dumpIRCode prints the LLVM IR code in the console
 	 * @return the {@link LLVMProgram} provides access to the LLVM functions and should be disposed when no longer needed.
-	 * @throws NoSuchMethodException
-	 * @throws IllegalClassFormatException
+	 * @throws IllegalClassFormatException if the invocation interface has invalid statements like overloaded methods
+	 * @throws NoSuchMethodException if the LLVM code does not contain all the functions as in the invocation interface
 	 */
 	public <T> LLVMProgram<T> compile(LLVMModuleBuilder<T> moduleBuilder, boolean dumpIRCode) throws NoSuchMethodException, IllegalClassFormatException {
 
@@ -78,7 +79,7 @@ public class LLVMCompiler {
 		optimizeModule(module, device);
 		jitCompileModule(engine, module, device);
 
-		return new LLVMProgram<>(engine, moduleBuilder.getInvocationInferace());
+		return new LLVMProgram<>(engine, moduleBuilder.getInvocationInterface());
 	}
 
 	protected static LLVMExecutionEngineRef createEngine(LLVMModuleRef module) {

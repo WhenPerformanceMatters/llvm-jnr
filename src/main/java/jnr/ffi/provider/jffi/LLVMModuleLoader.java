@@ -12,7 +12,7 @@ import jnr.ffi.LibraryOption;
  * 
  * @author Nico Hezel
  *
- * @param <T>
+ * @param <T> Invocation interface 
  */
 public class LLVMModuleLoader<T>  extends jnr.ffi.LibraryLoader<T> {
 	static final boolean ASM_ENABLED = getBooleanProperty("jnr.ffi.asm.enabled", true);

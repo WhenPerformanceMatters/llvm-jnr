@@ -212,7 +212,7 @@ public class LLVMMatMul implements LLVMModuleBuilder<LLVMMatMul.MatMulInterface>
 	}
 
 	@Override
-	public Class<MatMulInterface> getInvocationInferace() {
+	public Class<MatMulInterface> getInvocationInterface() {
 		return MatMulInterface.class;
 	}
 }
