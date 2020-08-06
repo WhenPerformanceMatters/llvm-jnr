@@ -236,13 +236,15 @@ public class LLVMProgram<T> implements AutoCloseable {
 			return true;
 		else if(typeKind == LLVM.LLVMDoubleTypeKind && javaType == double.class)
 			return true;
-		else if(typeKind == LLVM.LLVMIntegerTypeKind && (javaType == int.class || javaType == short.class || javaType == byte.class)) {
+		else if(typeKind == LLVM.LLVMIntegerTypeKind && (javaType == int.class || javaType == short.class || javaType == byte.class || javaType == boolean.class)) {
 			int b = LLVM.LLVMGetIntTypeWidth(llvmType);
 			if(b == 32 && javaType == int.class)
 				return true;
 			else if(b == 16 && javaType == short.class)
 				return true;
 			else if(b == 8 && javaType == byte.class)
+				return true;
+			else if(b == 1 && javaType == boolean.class)
 				return true;
 			return false;
 		} else if(typeKind == LLVM.LLVMArrayTypeKind && javaType.isArray()) {
