@@ -48,7 +48,7 @@ public class LLVMCompiler {
 	 * @throws NoSuchMethodException if the LLVM code does not contain all the functions as in the invocation interface
 	 */
 	public <T> LLVMProgram<T> compile(LLVMModuleBuilder<T> moduleBuilder) throws NoSuchMethodException, IllegalClassFormatException {
-		return compile(moduleBuilder, false);
+		return compile(moduleBuilder, false, false);
 	}
 
 	/**
@@ -67,6 +67,26 @@ public class LLVMCompiler {
 	 * @throws NoSuchMethodException if the LLVM code does not contain all the functions as in the invocation interface
 	 */
 	public <T> LLVMProgram<T> compile(LLVMModuleBuilder<T> moduleBuilder, boolean dumpIRCode) throws NoSuchMethodException, IllegalClassFormatException {
+		return compile(moduleBuilder, dumpIRCode, false);
+	}
+		
+	/**
+	 * Build the LLVM module from the moduleBuilder and optimize its code.
+	 * Compile all functions in the module and make those accessible which
+	 * are defined in the invocation interface see {@link LLVMModuleBuilder#getInvocationInterface()}.
+	 * 
+	 * This methods returns an {@link LLVMProgram} containing the LLVM module and java code to call 
+	 * native functions inside of this module. The program must be disposed when no longer used. 
+	 *  
+	 * @param <T> invocation interface 
+	 * @param moduleBuilder module builder 
+	 * @param dumpIRCode prints the LLVM IR code in the console
+	 * @param dumpOptimisedIRCode prints the optimised LLVM IR code in the console
+	 * @return the {@link LLVMProgram} provides access to the LLVM functions and should be disposed when no longer needed.
+	 * @throws IllegalClassFormatException if the invocation interface has invalid statements like overloaded methods
+	 * @throws NoSuchMethodException if the LLVM code does not contain all the functions as in the invocation interface
+	 */
+	public <T> LLVMProgram<T> compile(LLVMModuleBuilder<T> moduleBuilder, boolean dumpIRCode, boolean dumpOptimisedIRCode) throws NoSuchMethodException, IllegalClassFormatException {
 
 		// create and verify the LLVM code
 		LLVMModuleRef module = moduleBuilder.build();
@@ -78,6 +98,9 @@ public class LLVMCompiler {
 		LLVMExecutionEngineRef engine = createEngine(module);
 		optimizeModule(module, device);
 		jitCompileModule(engine, module, device);
+		
+		if (dumpOptimisedIRCode) 
+			LLVM.LLVMDumpModule(module);
 
 		return new LLVMProgram<>(engine, moduleBuilder.getInvocationInterface());
 	}
@@ -114,6 +137,12 @@ public class LLVMCompiler {
 		LLVM.createOptimizedJITCompilerForModule(engine, module, device, 3);
 	}
 
+	/**
+	 * Initialize compiler chain
+	 * 
+	 * @param usePolly
+	 * @param usePollyParallel
+	 */
 	protected static void initialize(boolean usePolly, boolean usePollyParallel) {
 		if (usePolly) {
 			if (usePollyParallel) {

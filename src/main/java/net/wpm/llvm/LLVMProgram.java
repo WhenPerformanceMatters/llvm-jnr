@@ -3,6 +3,7 @@ package net.wpm.llvm;
 
 import java.lang.instrument.IllegalClassFormatException;
 import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
 import java.lang.reflect.Parameter;
 import java.util.Collection;
 import java.util.HashMap;
@@ -116,7 +117,12 @@ public class LLVMProgram<T> implements AutoCloseable {
 	 */
 	protected static <T> Collection<String> verifyInvocationInterface(LLVMExecutionEngineRef engine, Class<T> invocationInterface) throws IllegalClassFormatException, NoSuchMethodException {
 
-		Set<String> funcNames = new HashSet<>();
+		// accept only interfaces
+		if(Modifier.isInterface(invocationInterface.getModifiers()) == false)
+			throw new IllegalClassFormatException(invocationInterface.getCanonicalName()+" is not an interface.");
+
+		// scan all methods of the interface
+		final Set<String> funcNames = new HashSet<>();
 		for (Method method : invocationInterface.getMethods()) {
 			final String funcName = method.getName();
 
@@ -124,10 +130,10 @@ public class LLVMProgram<T> implements AutoCloseable {
 			if(funcNames.contains(funcName))
 				throw new IllegalClassFormatException("Method overloading is allowed in LLVM invocation class got "+invocationInterface.getCanonicalName()+"#"+funcName+" at least twice.");
 			funcNames.add(funcName);
-
+			
 			// every method in the invocation class must exist in the module
-			LLVMValueRef func = new LLVMValueRef();
-			int error = LLVM.LLVMFindFunction(engine, new BytePointer(funcName), func);
+			final LLVMValueRef func = new LLVMValueRef();
+			final int error = LLVM.LLVMFindFunction(engine, new BytePointer(funcName), func);
 			if(error == 1)
 				throw new NoSuchMethodException("Every method in the LLVm invocation class must be in the LLVM IR. Missing "+funcName);
 
@@ -154,7 +160,7 @@ public class LLVMProgram<T> implements AutoCloseable {
 				throw new IllegalArgumentException("Expected the LLVM IR function "+funcName+" to have "+parameters.length+" input parameters, but got "+parameterCount);
 
 			// get the types of the input parameters from the LLVM IR function
-			PointerPointer<LLVMTypeRef> ptr = new PointerPointer<>(new LLVMTypeRef[parameterCount]);
+			final PointerPointer<LLVMTypeRef> ptr = new PointerPointer<>(new LLVMTypeRef[parameterCount]);
 			LLVM.LLVMGetParamTypes(funcType, ptr);				
 			for (int i = 0; i < parameterCount; i++) {
 				LLVMTypeRef llvmParam = new LLVMTypeRef(ptr.get(i));
@@ -162,8 +168,9 @@ public class LLVMProgram<T> implements AutoCloseable {
 				if(checkLLVMTypeCompatibility(llvmParam, javaType) == false)
 					throw new IllegalArgumentException("Expected the "+i+". input parameter of the LLVM IR function "+funcName+" to be "+javaType+" but got "+getTypekindName(LLVM.LLVMGetTypeKind(llvmParam)));
 			}
+			
 			// check the return type
-			LLVMTypeRef returnType = LLVM.LLVMGetReturnType(funcType);
+			final LLVMTypeRef returnType = LLVM.LLVMGetReturnType(funcType);
 			if(checkLLVMTypeCompatibility(returnType, method.getReturnType()) == false)
 				throw new IllegalArgumentException("Expected the LLVM IR function "+funcName+" to have the return type "+method.getReturnType());
 

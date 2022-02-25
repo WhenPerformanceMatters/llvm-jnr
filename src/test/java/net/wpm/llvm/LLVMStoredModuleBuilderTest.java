@@ -1,13 +1,17 @@
 package net.wpm.llvm;
 
 import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.lang.instrument.IllegalClassFormatException;
 import java.net.URISyntaxException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.text.ParseException;
+import java.util.Random;
 
 import org.bytedeco.llvm.global.LLVM;
+import org.junit.Assert;
+import org.junit.Test;
 
 import net.wpm.llvm.module.LLVMMatMulTest;
 
@@ -38,27 +42,37 @@ import net.wpm.llvm.module.LLVMMatMulTest;
  */
 public class LLVMStoredModuleBuilderTest {
 
-	public static void main(String[] args) throws NoSuchMethodException, IllegalClassFormatException, FileNotFoundException, ParseException, URISyntaxException {
-
-		final int M = 20, N = 20, K = 20;
-		float[] a = LLVMMatMulTest.createRandomArray(M, K);
-		float[] b = LLVMMatMulTest.createRandomArray(K, N);
-		float[] c = new float[M * N];
-
-		Path file = Paths.get(LLVMStoredModuleBuilderTest.class.getResource("matmul.ir").toURI());
-		LLVMStoredModuleBuilder<MatMulInterface> moduleBuilder = new LLVMStoredModuleBuilder<>(file, MatMulInterface.class);
-		LLVMCompiler compiler = new LLVMCompiler(true, false);
-		try(LLVMProgram<MatMulInterface> program = compiler.compile(moduleBuilder, true)) {
-			program.invoke().matmul(a, b, c, M, N, K);
-			System.out.println("c[0]"+c[0]);
-		}
+	public static void main(String[] args) throws InterruptedException, IOException, ParseException, NoSuchMethodException, IllegalClassFormatException, URISyntaxException {
+		
+		final LLVMStoredModuleBuilderTest test = new LLVMStoredModuleBuilderTest();
+		test.testStoredModuleBuilder();
 
 		LLVM.LLVMShutdown();
-		System.out.println("finished");
+		System.out.println("Finished");
+	}
+
+	@Test
+	public void testStoredModuleBuilder() throws NoSuchMethodException, IllegalClassFormatException, FileNotFoundException, ParseException, URISyntaxException {
+		final Path file = Paths.get(LLVMStoredModuleBuilderTest.class.getResource("matmul.ll").toURI());
+
+		final int M = 20, N = 20, K = 20;
+		final Random rand = new Random(7);
+		final float[] a = LLVMMatMulTest.createRandomArray(rand, M, K);
+		final float[] b = LLVMMatMulTest.createRandomArray(rand, K, N);
+		final float[] c = new float[M * N];
+
+		final LLVMModuleBuilder<MatMulInterface> moduleBuilder = new LLVMStoredModuleBuilder<>(file, MatMulInterface.class);
+		final LLVMCompiler compiler = new LLVMCompiler(true, false);
+		try(LLVMProgram<MatMulInterface> program = compiler.compile(moduleBuilder, true)) {
+			System.out.println("compiled");
+			program.invoke().matmul(a, b, c, M, N, K);
+			System.out.println("c[0]"+c[0]);
+			Assert.assertEquals(c[0], 7.0694447, 0.0002);
+		}
 	}
 
 	/**
-	 * This is a invocation interface for the LLVM function in the matmul.ir file.
+	 * This is a invocation interface for the LLVM function in the matmul.ll file.
 	 * 
 	 * @author Nico Hezel
 	 */

@@ -7,13 +7,20 @@ import static org.bytedeco.mkl.global.mkl_rt.mkl_cblas_jit_create_sgemm;
 import static org.bytedeco.mkl.global.mkl_rt.mkl_jit_destroy;
 import static org.bytedeco.mkl.global.mkl_rt.mkl_jit_get_sgemm_ptr;
 
+import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Random;
 
+import org.bytedeco.javacpp.BytePointer;
 import org.bytedeco.javacpp.FloatPointer;
+import org.bytedeco.javacpp.LongPointer;
 import org.bytedeco.javacpp.Pointer;
+import org.bytedeco.javacpp.PointerPointer;
+import org.bytedeco.libffi.ffi_cif;
+import org.bytedeco.libffi.ffi_type;
+import org.bytedeco.libffi.global.ffi;
 import org.bytedeco.mkl.global.mkl_rt;
 import org.bytedeco.mkl.global.mkl_rt.sgemm_jit_kernel_t;
 
@@ -30,7 +37,7 @@ import net.wpm.llvm.LLVMStoredModuleBuilder;
  *
  * If you set usePollyParallel, you may have to modify the file name of LLVMLoadLibraryPermanently().
  *
- * Note: This code is equivalent to this:
+ * Note: This code is equivalent to:
  * clang -O3 -march=native -mllvm -polly -mllvm -polly-vectorizer=stripmine
  *
  * Note: Instead of JNA, to obtain maximum performance, FunctionPointer should be used as shown here:
@@ -47,9 +54,9 @@ import net.wpm.llvm.LLVMStoredModuleBuilder;
  * usePollyParallel = false;
  * testIterations = 10;
  * 
- * MKL: 517,067380ms. c[0] = 489,814484
- * LLVM JNR: 1145,031080ms. c[0] = 489,814575
- * LLVM JNA: 1148,953430ms. c[0] = 489,814575
+ * MKL: 284,999140ms. c[0] = 489,814423
+ * LLVM with Polly: 1096,962030ms. c[0] = 489,814575
+ * LLVM with Polly: 1092,440860ms. c[0] = 489,814575
  * Pure Java: 16988,667810ms. c[0] = 489,814575
  * 
  * -------------------
@@ -60,10 +67,10 @@ import net.wpm.llvm.LLVMStoredModuleBuilder;
  * usePollyParallel = false;
  * testIterations = 100;
  * 
- * MKL: 0,001691ms. c[0] = 7,069445
- * LLVM JNR: 0,003854ms. c[0] = 7,069445
- * LLVM JNA: 0,012026ms. c[0] = 7,069445
- * Pure Java: 0,071135ms. c[0] = 7,069445
+ * MKL: 0,000787ms. c[0] = 7,069445
+ * LLVM with JNR and Polly: 0,003605ms. c[0] = 7,069445
+ * LLVM with JNA and Polly: 0,011798ms. c[0] = 7,069445
+ * Pure Java: 0,068170ms. c[0] = 7,069445
  * 
  * -------------------
  * 
@@ -73,10 +80,10 @@ import net.wpm.llvm.LLVMStoredModuleBuilder;
  * usePollyParallel = false;
  * testIterations = 10000;
  * 
- * MKL: 0,001634ms. c[0] = 7,069445
- * LLVM JNR: 0,001513ms. c[0] = 7,069445
- * LLVM JNA: 0,002966ms. c[0] = 7,069445
- * Pure Java: 0,006395ms. c[0] = 7,069445
+ * MKL: 0,000759ms. c[0] = 7,069445
+ * LLVM with JNR and Polly: 0,001671ms. c[0] = 7,069445
+ * LLVM with JNA and Polly: 0,002944ms. c[0] = 7,069445
+ * Pure Java: 0,007240ms. c[0] = 7,069445
  * 
  */
 public class MatMulBenchmark {
@@ -85,7 +92,7 @@ public class MatMulBenchmark {
 	static final boolean usePolly = true;
 	static final boolean usePollyParallel = false;
 	static final boolean printResult = false;
-	static final int testIterations = 100;
+	static final int testIterations = 10000;
 
 	static final Random rand = new Random(7);
 
@@ -169,7 +176,7 @@ public class MatMulBenchmark {
 		cPtr.put(0, c, 0, c.length);
 
 		// The code in the file containing code is for M,N,K = 20.
-		Path file = Paths.get(MatMulBenchmark.class.getResource((M == 20) ? "matmul20.ir" : "matmul2000.ir").toURI());
+		Path file = Paths.get(MatMulBenchmark.class.getResource((M == 20) ? "matmul20.ll" : "matmul2000.ll").toURI());
 		LLVMStoredModuleBuilder<MatMulInterface> moduleBuilder = new LLVMStoredModuleBuilder<>(file, MatMulInterface.class);
 		LLVMCompiler compiler = new LLVMCompiler(true, false);
 		try(LLVMProgram<MatMulInterface> program = compiler.compile(moduleBuilder)) {	
@@ -183,8 +190,8 @@ public class MatMulBenchmark {
 			long end = System.nanoTime();
 
 			cPtr.get(0, c, 0, c.length);
-			System.out.printf("LLVM%s: %fms. c[0] = %f\n",
-					usePolly ? " with Polly" : " without Polly",
+			System.out.printf("LLVM with JNR and %s: %fms. c[0] = %f\n",
+							usePolly ? "Polly" : "without Polly",
 							(end - start) / (testIterations * 1000d * 1000d),
 							c[0]);
 			printArray(c);
@@ -206,8 +213,8 @@ public class MatMulBenchmark {
 		cPtr.getByteBuffer(0, cPtr.size()).order(ByteOrder.nativeOrder()).asFloatBuffer().put(c);
 
 
-		// The code in the file containing code is for M,N,K = 20.
-		Path file = Paths.get(MatMulBenchmark.class.getResource((M == 20) ? "matmul20.ir" : "matmul2000.ir").toURI());
+		// The code in the IR file works only for M,N,K = 20.
+		Path file = Paths.get(MatMulBenchmark.class.getResource((M == 20) ? "matmul20.ll" : "matmul2000.ll").toURI());
 		LLVMStoredModuleBuilder<MatMulInterface> moduleBuilder = new LLVMStoredModuleBuilder<>(file, MatMulInterface.class);
 		LLVMCompiler compiler = new LLVMCompiler(true, false);
 		try(LLVMProgram<MatMulInterface> program = compiler.compile(moduleBuilder)) {	
@@ -222,8 +229,8 @@ public class MatMulBenchmark {
 			long end = System.nanoTime();
 
 			cPtr.getByteBuffer(0, aPtr.size()).order(ByteOrder.nativeOrder()).asFloatBuffer().get(c);
-			System.out.printf("LLVM%s: %fms. c[0] = %f\n",
-					usePolly ? " with Polly" : " without Polly",
+			System.out.printf("LLVM with JNA and %s: %fms. c[0] = %f\n",
+					usePolly ? "Polly" : "without Polly",
 							(end - start) / (testIterations * 1000d * 1000d),
 							c[0]);
 			printArray(c);
@@ -247,7 +254,8 @@ public class MatMulBenchmark {
 	}
 
 	/**
-	 * This is a invocation interface for the LLVM function in the IR file.
+	 * This is an invocation interface for the LLVM function in the matmul.ll file.
+	 * The interface defines the same functions and signatures as those in the file.
 	 * 
 	 * @author Nico Hezel
 	 */

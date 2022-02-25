@@ -26,7 +26,6 @@ public class LLVMMatMulTest {
 	static final boolean printResult = false;
 	static final int testIterations = 100;
 
-	static final Random rand = new Random(7);
 
 	public static void main(String[] args) throws NoSuchMethodException, IllegalClassFormatException {
 
@@ -35,8 +34,9 @@ public class LLVMMatMulTest {
 		long MASK = Platform.getPlatform().addressMask();
 		System.out.println("MASK"+MASK);
 
-		float[] a = createRandomArray(M, K);
-		float[] b = createRandomArray(K, N);
+		final Random rand = new Random(7);
+		float[] a = createRandomArray(rand, M, K);
+		float[] b = createRandomArray(rand, K, N);
 		float[] c = new float[M * N];
 
 		MemoryIO IO = MemoryIO.getInstance();        
@@ -78,7 +78,7 @@ public class LLVMMatMulTest {
 		System.out.println("finished");
 	}
 
-	public static float[] createRandomArray(int m, int n) {
+	public static float[] createRandomArray(Random rand, int m, int n) {
 		float[] ary = new float[m * n];
 		for (int i = 0; i < ary.length; i++) {
 			ary[i] = rand.nextFloat();
