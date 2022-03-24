@@ -18,9 +18,6 @@ import org.bytedeco.javacpp.FloatPointer;
 import org.bytedeco.javacpp.LongPointer;
 import org.bytedeco.javacpp.Pointer;
 import org.bytedeco.javacpp.PointerPointer;
-import org.bytedeco.libffi.ffi_cif;
-import org.bytedeco.libffi.ffi_type;
-import org.bytedeco.libffi.global.ffi;
 import org.bytedeco.mkl.global.mkl_rt;
 import org.bytedeco.mkl.global.mkl_rt.sgemm_jit_kernel_t;
 
@@ -67,10 +64,10 @@ import net.wpm.llvm.LLVMStoredModuleBuilder;
  * usePollyParallel = false;
  * testIterations = 100;
  * 
- * MKL: 0,000787ms. c[0] = 7,069445
- * LLVM with JNR and Polly: 0,003605ms. c[0] = 7,069445
- * LLVM with JNA and Polly: 0,011798ms. c[0] = 7,069445
- * Pure Java: 0,068170ms. c[0] = 7,069445
+ * MKL: 0,000847ms. c[0] = 7,069445
+ * LLVM with JNR and Polly: 0,000882ms. c[0] = 7,069445
+ * LLVM with JNA and Polly: 0,001976ms. c[0] = 7,069445
+ * Pure Java: 0,006404ms. c[0] = 7,069445
  * 
  * -------------------
  * 
@@ -80,10 +77,10 @@ import net.wpm.llvm.LLVMStoredModuleBuilder;
  * usePollyParallel = false;
  * testIterations = 10000;
  * 
- * MKL: 0,000759ms. c[0] = 7,069445
- * LLVM with JNR and Polly: 0,001671ms. c[0] = 7,069445
- * LLVM with JNA and Polly: 0,002944ms. c[0] = 7,069445
- * Pure Java: 0,007240ms. c[0] = 7,069445
+ * MKL: 0,000740ms. c[0] = 7,069445
+ * LLVM with JNR and Polly: 0,000710ms. c[0] = 7,069445
+ * LLVM with JNA and Polly: 0,001603ms. c[0] = 7,069445
+ * Pure Java: 0,006228ms. c[0] = 7,069445
  * 
  */
 public class MatMulBenchmark {
@@ -93,6 +90,7 @@ public class MatMulBenchmark {
 	static final boolean usePollyParallel = false;
 	static final boolean printResult = false;
 	static final int testIterations = 10000;
+	static final int warmupIterations = 100000;
 
 	static final Random rand = new Random(7);
 
@@ -122,7 +120,8 @@ public class MatMulBenchmark {
 		mkl_rt.MKL_Set_Num_Threads(usePollyParallel ? 8 : 1);
 
 		// warm up
-		sgemm.call(jitter, A, B, C);
+		for (int i = 0; i < warmupIterations; i++) 
+			sgemm.call(jitter, A, B, C);
 
 		long start = System.nanoTime();
 		for (int i = 0; i < testIterations; i++) 
@@ -139,7 +138,8 @@ public class MatMulBenchmark {
 		assert c.length == M * N;
 
 		// warm up
-		sgemmJava(a, b, c, M, N, K);
+		for (int i = 0; i < warmupIterations; i++) 
+			sgemmJava(a, b, c, M, N, K);
 
 		long start = System.nanoTime();
 		for (int i = 0; i < testIterations; i++) 
@@ -182,7 +182,8 @@ public class MatMulBenchmark {
 		try(LLVMProgram<MatMulInterface> program = compiler.compile(moduleBuilder)) {	
 
 			// warm up
-			program.invoke().matmul(aPtr, bPtr, cPtr);
+			for (int i = 0; i < warmupIterations; i++) 
+				program.invoke().matmul(aPtr, bPtr, cPtr);
 
 			long start = System.nanoTime();
 			for (int i = 0; i < testIterations; i++) 
@@ -221,7 +222,8 @@ public class MatMulBenchmark {
 			com.sun.jna.Function func = com.sun.jna.Function.getFunction(new com.sun.jna.Pointer(program.getAddress("matmul")));
 
 			// warm up
-			func.invoke(Void.class, new Object[]{aPtr, bPtr, cPtr});
+			for (int i = 0; i < warmupIterations; i++) 
+				func.invoke(Void.class, new Object[]{aPtr, bPtr, cPtr});
 
 			long start = System.nanoTime();
 			for (int i = 0; i < testIterations; i++) 
