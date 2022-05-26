@@ -14,6 +14,7 @@ import java.util.Set;
 import org.bytedeco.javacpp.BytePointer;
 import org.bytedeco.javacpp.PointerPointer;
 import org.bytedeco.llvm.LLVM.LLVMExecutionEngineRef;
+import org.bytedeco.llvm.LLVM.LLVMModuleRef;
 import org.bytedeco.llvm.LLVM.LLVMTypeRef;
 import org.bytedeco.llvm.LLVM.LLVMValueRef;
 import org.bytedeco.llvm.global.LLVM;
@@ -39,6 +40,7 @@ import jnr.ffi.provider.jffi.LLVMModuleLoader;
 public class LLVMProgram<T> implements AutoCloseable {
 
 	protected final LLVMExecutionEngineRef engine;
+	protected final LLVMModuleRef module;
 	protected final T invocationInterface;
 	protected final Map<String, Long> funcNameToAddress;
 
@@ -51,8 +53,9 @@ public class LLVMProgram<T> implements AutoCloseable {
 	 * @throws IllegalClassFormatException if the invocation interface has invalid statements like overloaded methods
 	 * @throws NoSuchMethodException if the LLVM code does not contain all the functions as in the invocation interface
 	 */
-	public LLVMProgram(LLVMExecutionEngineRef engine, Class<T> invocationInterface) throws NoSuchMethodException, IllegalClassFormatException {
+	public LLVMProgram(LLVMExecutionEngineRef engine, LLVMModuleRef module, Class<T> invocationInterface) throws NoSuchMethodException, IllegalClassFormatException {
 		this.engine = engine;
+		this.module = module;
 
 		// check if all methods in the invocation class exist in the LLVM engine
 		Collection<String> funcNames = verifyInvocationInterface(engine, invocationInterface);
@@ -63,6 +66,10 @@ public class LLVMProgram<T> implements AutoCloseable {
 			long fnAddr = LLVM.LLVMGetFunctionAddress(engine, funcName);
 			funcNameToAddress.put(funcName, fnAddr);
 		}
+		
+		// TODO might be possible with LLVMGetNamedFunction and LLVMRunFunction without JNR
+		// https://github.com/bytedeco/javacpp-presets/blob/231ec19685f18fdbddaeadeabe07b57f464af4d6/llvm/samples/llvm/EmitBitcode.java#L190
+		
 		LibraryLoader<T> libraryLoader = new LLVMModuleLoader<T>(invocationInterface, funcNameToAddress);
 		this.invocationInterface = libraryLoader.load("llvm");
 	}
@@ -75,6 +82,10 @@ public class LLVMProgram<T> implements AutoCloseable {
 	 */
 	public long getAddress(String funcName) {
 		return this.funcNameToAddress.get(funcName);
+	}
+	
+	public LLVMModuleRef getOptimizedModule() {
+		return module;
 	}
 
 	/**

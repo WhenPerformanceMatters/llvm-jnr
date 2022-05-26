@@ -1,9 +1,6 @@
 package net.wpm.llvm.module;
 
-import java.io.IOException;
 import java.lang.instrument.IllegalClassFormatException;
-import java.net.URISyntaxException;
-import java.text.ParseException;
 
 import org.bytedeco.llvm.global.LLVM;
 import org.junit.Assert;
@@ -20,7 +17,7 @@ import net.wpm.llvm.module.LLVMFac.FacInterface;
  */
 public class LLVMFacTest {
 	
-	public static void main(String[] args) throws InterruptedException, IOException, ParseException, NoSuchMethodException, IllegalClassFormatException, URISyntaxException {
+	public static void main(String[] args) throws NoSuchMethodException, IllegalClassFormatException  {
 		
 		final LLVMFacTest test = new LLVMFacTest();
 		test.testFacModule();
@@ -30,7 +27,7 @@ public class LLVMFacTest {
 	}
 
 	@Test
-	public void testFacModule() throws NoSuchMethodException, IllegalClassFormatException {
+	public void testFacModule() throws NoSuchMethodException, IllegalClassFormatException   {
 
 		LLVMFac moduleBuilder = new LLVMFac();
 		LLVMCompiler compiler = new LLVMCompiler(true, false);

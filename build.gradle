@@ -15,7 +15,7 @@ tasks.withType(AbstractCompile)*.options*.encoding = "UTF-8"
 
 
 // group and version of the project 
-version = '1.0.0'
+version = '1.0.1'
 group = 'net.whenperformancematters'
 archivesBaseName = "llvm-jnr"
 

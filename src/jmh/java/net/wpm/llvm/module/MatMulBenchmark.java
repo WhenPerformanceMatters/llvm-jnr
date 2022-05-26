@@ -7,17 +7,13 @@ import static org.bytedeco.mkl.global.mkl_rt.mkl_cblas_jit_create_sgemm;
 import static org.bytedeco.mkl.global.mkl_rt.mkl_jit_destroy;
 import static org.bytedeco.mkl.global.mkl_rt.mkl_jit_get_sgemm_ptr;
 
-import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Random;
 
-import org.bytedeco.javacpp.BytePointer;
 import org.bytedeco.javacpp.FloatPointer;
-import org.bytedeco.javacpp.LongPointer;
 import org.bytedeco.javacpp.Pointer;
-import org.bytedeco.javacpp.PointerPointer;
 import org.bytedeco.mkl.global.mkl_rt;
 import org.bytedeco.mkl.global.mkl_rt.sgemm_jit_kernel_t;
 
@@ -85,12 +81,12 @@ import net.wpm.llvm.LLVMStoredModuleBuilder;
  */
 public class MatMulBenchmark {
 
-	static final int M = 20, N = 20, K = 20;
+	static final int M = 2000, N = 2000, K = 2000;
 	static final boolean usePolly = true;
 	static final boolean usePollyParallel = false;
 	static final boolean printResult = false;
-	static final int testIterations = 10000;
-	static final int warmupIterations = 100000;
+	static final int testIterations = 1;
+	static final int warmupIterations = 0;
 
 	static final Random rand = new Random(7);
 
@@ -178,7 +174,7 @@ public class MatMulBenchmark {
 		// The code in the file containing code is for M,N,K = 20.
 		Path file = Paths.get(MatMulBenchmark.class.getResource((M == 20) ? "matmul20.ll" : "matmul2000.ll").toURI());
 		LLVMStoredModuleBuilder<MatMulInterface> moduleBuilder = new LLVMStoredModuleBuilder<>(file, MatMulInterface.class);
-		LLVMCompiler compiler = new LLVMCompiler(true, false);
+		LLVMCompiler compiler = new LLVMCompiler(usePolly, usePollyParallel);
 		try(LLVMProgram<MatMulInterface> program = compiler.compile(moduleBuilder)) {	
 
 			// warm up
@@ -217,7 +213,7 @@ public class MatMulBenchmark {
 		// The code in the IR file works only for M,N,K = 20.
 		Path file = Paths.get(MatMulBenchmark.class.getResource((M == 20) ? "matmul20.ll" : "matmul2000.ll").toURI());
 		LLVMStoredModuleBuilder<MatMulInterface> moduleBuilder = new LLVMStoredModuleBuilder<>(file, MatMulInterface.class);
-		LLVMCompiler compiler = new LLVMCompiler(true, false);
+		LLVMCompiler compiler = new LLVMCompiler(usePolly, usePollyParallel);
 		try(LLVMProgram<MatMulInterface> program = compiler.compile(moduleBuilder)) {	
 			com.sun.jna.Function func = com.sun.jna.Function.getFunction(new com.sun.jna.Pointer(program.getAddress("matmul")));
 

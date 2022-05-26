@@ -3,10 +3,13 @@ package net.wpm.llvm;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.text.ParseException;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+
+import javax.xml.bind.DatatypeConverter;
 
 import org.bytedeco.javacpp.Loader;
+import org.bytedeco.llvm.LLVM.LLVMModuleRef;
 
 
 /**
@@ -20,18 +23,30 @@ public class LLVMClangModuleBuilder<T> extends LLVMStoredModuleBuilder<T> {
 
 	protected static String clang;
 	
+	protected final Path cFile;
+	protected final String[] clangParams;
+	
 	/**
 	 * Compile a c file to a LLVM module
 	 * 
 	 * @param cFile containing c code
 	 * @param invocationInterface invocation interface 
 	 * @param clangParams additional commands for clang
-	 * @throws ParseException unable to parse the IR code
-	 * @throws InterruptedException clang compiler error 
-	 * @throws IOException could not store the c file 
+	 * @throws NoSuchAlgorithmException unable to create hash code for file
+	 * @throws IOException could not read the c file 
 	 */
-	public LLVMClangModuleBuilder(Path cFile, Class<T> invocationInterface, String ... clangParams) throws IOException, InterruptedException, ParseException {
-		super(transpile(cFile, clangParams), invocationInterface);
+	public LLVMClangModuleBuilder(Path cFile, Class<T> invocationInterface, String ... clangParams) throws NoSuchAlgorithmException, IOException {
+		this(cFile, null, invocationInterface, clangParams);
+	}
+	
+	public LLVMClangModuleBuilder(Path cFile, Path cacheDir, Class<T> invocationInterface, String ... clangParams) throws NoSuchAlgorithmException, IOException {
+		this(cFile, computeFileHash(cFile), cacheDir, invocationInterface, clangParams);
+	}
+	
+	public LLVMClangModuleBuilder(Path cFile, String fileHash, Path cacheDir, Class<T> invocationInterface, String ... clangParams) throws NoSuchAlgorithmException, IOException  {
+		super(llvmFile(cFile, fileHash, cacheDir), invocationInterface);
+		this.cFile = cFile;
+		this.clangParams = clangParams;
 	}
 	
 	/**
@@ -40,62 +55,100 @@ public class LLVMClangModuleBuilder<T> extends LLVMStoredModuleBuilder<T> {
 	 * @param cCode string with c code
 	 * @param invocationInterface invocation interface 
 	 * @param clangParams additional commands for clang
-	 * @throws ParseException unable to parse the IR code
-	 * @throws InterruptedException clang compiler error 
+	 * @throws NoSuchAlgorithmException 
 	 * @throws IOException could not store the c file
 	 */
-	public LLVMClangModuleBuilder(String cCode, Class<T> invocationInterface, String ... clangParams) throws IOException, InterruptedException, ParseException {
-		super(transpile(cCode, clangParams), invocationInterface);
+	public LLVMClangModuleBuilder(String cCode, Class<T> invocationInterface, String ... clangParams) throws NoSuchAlgorithmException, IOException {
+		this(cCode, null, invocationInterface, clangParams);
 	}
-
-	/**
-	 * Store the c code to a file and compile it into a LLVM module
-	 * 
-	 * @param cCode string with c code
-	 * @param clangParams additional commands for clang
-	 * @return path to the LLVM IR file
-	 * @throws IOException could not store the c file
-	 * @throws InterruptedException clang compiler error 
-	 */
-	protected static Path transpile(String cCode, String ... clangParams) throws IOException, InterruptedException {
-		
-		// store c code to file
-		final Path tmpDir = Files.createTempDirectory("llvm_jnr");
-		final Path cFile = Files.createTempFile(tmpDir, "", ".c");
-		System.out.println("Write c file to "+ cFile);
-		Files.write(cFile, cCode.getBytes());
-		
-		// where should the output file be stored
-		String filename = cFile.getFileName().toString();
-		filename = filename.substring(0, filename.lastIndexOf('.')) + ".ll";
-		String outputPath = tmpDir.resolve(filename).toString();
-		
-		// compile the code
-		runClang(cFile.toString(), outputPath, clangParams);
-
-		return Paths.get(outputPath);
+	
+	public LLVMClangModuleBuilder(String cCode, Path cacheDir, Class<T> invocationInterface, String ... clangParams) throws NoSuchAlgorithmException, IOException  {
+		this(toCFile(cCode, cacheDir), "", cacheDir, invocationInterface);
+	}
+	
+	public Path getCFile() {
+		return cFile;
 	}
 	
 	/**
-	 * Compile a c file to a LLVM module
+	 * Get output llvm file name
 	 * 
-	 * @param cFile path to the c file
-	 * @param clangParams additional commands for clang
-	 * @return path to the LLVM IR file
-	 * @throws IOException could not store the c file
-	 * @throws InterruptedException clang compiler error
+	 * @param cFile file with c-code
+	 * @param cacheDir output directory
+	 * @return output file containing llvm assembly
+	 * @throws IOException
+	 * @throws NoSuchAlgorithmException
 	 */
-	protected static Path transpile(Path cFile, String ... clangParams) throws IOException, InterruptedException {
+	public static Path llvmFile(Path cFile, String fileHash, Path cacheDir) throws IOException, NoSuchAlgorithmException {
 		
+		// without a cache directory use a temporary directory
+		if(cacheDir == null)
+			cacheDir = Files.createTempDirectory("llvm_jnr");
+
 		// where should the output file be stored
 		String filename = cFile.getFileName().toString();
-		filename = filename.substring(0, filename.lastIndexOf('.')) + ".ll";
-		String outputPath = Files.createTempDirectory("llvm_jnr").resolve(filename).toString();
 		
-		// compile the code
-		runClang(cFile.toString(), outputPath, clangParams);
+		// check if a binary version already exists
+		String bcFilename = filename.substring(0, filename.lastIndexOf('.')) + fileHash + ".bc";
+		final Path bcOutputPath = cacheDir.resolve(bcFilename);	
+		if(Files.exists(bcOutputPath))
+			return bcOutputPath;
 		
-		return Paths.get(outputPath);
+		// check if a text version already exists
+		String irFilename = filename.substring(0, filename.lastIndexOf('.')) + fileHash + ".ll";		
+		return cacheDir.resolve(irFilename);
+	}
+	
+	/**
+	 * Store c code to file
+	 * 
+	 * @param cCode
+	 * @param cacheDir
+	 * @return
+	 * @throws IOException
+	 * @throws NoSuchAlgorithmException
+	 */
+	public static Path toCFile(String cCode, Path cacheDir) throws IOException, NoSuchAlgorithmException {
+		String hash = computeHash(cCode);
+		
+		// without a cache directory use a temporary directory
+		if(cacheDir == null)
+			cacheDir = Files.createTempDirectory("llvm_jnr");
+
+		// where should the output file be stored
+		final Path cFile = cacheDir.resolve(hash + ".c");
+		Files.write(cFile, cCode.getBytes());
+		
+		return cFile;
+	}
+	
+	/**
+	 * Compute the md5 hash of the given file
+	 * 
+	 * @param cFile
+	 * @return md5 hash
+	 * @throws NoSuchAlgorithmException
+	 * @throws IOException
+	 */
+	protected static String computeFileHash(Path cFile) throws NoSuchAlgorithmException, IOException {
+		MessageDigest md = MessageDigest.getInstance("MD5");
+		md.update(Files.readAllBytes(cFile));
+		byte[] digest = md.digest();
+		return DatatypeConverter.printHexBinary(digest).toUpperCase();		
+	}
+	
+	/**
+	 * Compute the md5 hash of the given string
+	 * 
+	 * @param text
+	 * @return
+	 * @throws NoSuchAlgorithmException
+	 */
+	protected static String computeHash(String text) throws NoSuchAlgorithmException {
+		MessageDigest md = MessageDigest.getInstance("MD5");
+		md.update(text.getBytes());
+		byte[] digest = md.digest();
+		return DatatypeConverter.printHexBinary(digest).toUpperCase();		
 	}
 	
 	/**
@@ -108,7 +161,7 @@ public class LLVMClangModuleBuilder<T> extends LLVMStoredModuleBuilder<T> {
 	 * @throws IOException could not store the c file
 	 */
 	protected static void runClang(String inputFile, String outputFile, String ... clangParams) throws InterruptedException, IOException {
-
+		
 		// lazy initialization of clang
 		if(clang == null)
 			clang = Loader.load(org.bytedeco.llvm.program.clang.class);
@@ -131,5 +184,20 @@ public class LLVMClangModuleBuilder<T> extends LLVMStoredModuleBuilder<T> {
 		System.out.println(String.join(" ", commands));
 		ProcessBuilder pb = new ProcessBuilder(commands);
 		pb.inheritIO().start().waitFor();
+
+	}
+	
+	@Override
+	public LLVMModuleRef build() {
+		
+		if(Files.exists(super.getLLVMFile()) == false) {
+			try {
+				runClang(cFile.toString(), super.getLLVMFile().toString(), clangParams);			
+			} catch (Exception e) {
+				throw new RuntimeException(e.getMessage(), e);
+			}
+		}
+		
+		return super.build();
 	}
 }

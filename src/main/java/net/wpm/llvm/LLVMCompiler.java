@@ -33,6 +33,7 @@ public class LLVMCompiler {
 		device = LLVM.LLVMGetHostCPUName();
 	}
 
+	
 	/**
 	 * Build the LLVM module from the moduleBuilder and optimize its code.
 	 * Compile all functions in the module and make those accessible which
@@ -48,9 +49,9 @@ public class LLVMCompiler {
 	 * @throws NoSuchMethodException if the LLVM code does not contain all the functions as in the invocation interface
 	 */
 	public <T> LLVMProgram<T> compile(LLVMModuleBuilder<T> moduleBuilder) throws NoSuchMethodException, IllegalClassFormatException {
-		return compile(moduleBuilder, false, false);
+		return compile(moduleBuilder.build(), moduleBuilder.getInvocationInterface(), false);
 	}
-
+	
 	/**
 	 * Build the LLVM module from the moduleBuilder and optimize its code.
 	 * Compile all functions in the module and make those accessible which
@@ -60,58 +61,58 @@ public class LLVMCompiler {
 	 * native functions inside of this module. The program must be disposed when no longer used. 
 	 *  
 	 * @param <T> invocation interface 
-	 * @param moduleBuilder module builder 
-	 * @param dumpIRCode prints the LLVM IR code in the console
+	 * @param moduleBuilder module builder
+	 * @param isOptimized 
 	 * @return the {@link LLVMProgram} provides access to the LLVM functions and should be disposed when no longer needed.
 	 * @throws IllegalClassFormatException if the invocation interface has invalid statements like overloaded methods
 	 * @throws NoSuchMethodException if the LLVM code does not contain all the functions as in the invocation interface
 	 */
-	public <T> LLVMProgram<T> compile(LLVMModuleBuilder<T> moduleBuilder, boolean dumpIRCode) throws NoSuchMethodException, IllegalClassFormatException {
-		return compile(moduleBuilder, dumpIRCode, false);
+	public <T> LLVMProgram<T> compile(LLVMModuleBuilder<T> moduleBuilder, boolean isOptimized) throws NoSuchMethodException, IllegalClassFormatException {
+		return compile(moduleBuilder.build(), moduleBuilder.getInvocationInterface(), isOptimized);
 	}
 		
 	/**
-	 * Build the LLVM module from the moduleBuilder and optimize its code.
+	 * Build the LLVM module from the module and optimize its code.
 	 * Compile all functions in the module and make those accessible which
 	 * are defined in the invocation interface see {@link LLVMModuleBuilder#getInvocationInterface()}.
 	 * 
 	 * This methods returns an {@link LLVMProgram} containing the LLVM module and java code to call 
 	 * native functions inside of this module. The program must be disposed when no longer used. 
-	 *  
+	 * 
 	 * @param <T> invocation interface 
-	 * @param moduleBuilder module builder 
-	 * @param dumpIRCode prints the LLVM IR code in the console
-	 * @param dumpOptimisedIRCode prints the optimised LLVM IR code in the console
+	 * @param module containing llvm assembly
+	 * @param invocationInterface class
+	 * @param isOptimized
 	 * @return the {@link LLVMProgram} provides access to the LLVM functions and should be disposed when no longer needed.
 	 * @throws IllegalClassFormatException if the invocation interface has invalid statements like overloaded methods
 	 * @throws NoSuchMethodException if the LLVM code does not contain all the functions as in the invocation interface
 	 */
-	public <T> LLVMProgram<T> compile(LLVMModuleBuilder<T> moduleBuilder, boolean dumpIRCode, boolean dumpOptimisedIRCode) throws NoSuchMethodException, IllegalClassFormatException {
-
-		// create and verify the LLVM code
-		LLVMModuleRef module = moduleBuilder.build();
-		if (dumpIRCode) 
-			LLVM.LLVMDumpModule(module);
+	public <T> LLVMProgram<T> compile(LLVMModuleRef module, Class<T> invocationInterface, boolean isOptimized) throws NoSuchMethodException, IllegalClassFormatException {
+		
+		// verify the LLVM code
 		verifyModule(module);
 
 		// create an execution engine to run the module
-		LLVMExecutionEngineRef engine = createEngine(module);
-		optimizeModule(module, device);
-		jitCompileModule(engine, module, device);
-		
-		if (dumpOptimisedIRCode) 
-			LLVM.LLVMDumpModule(module);
+		final LLVMModuleRef optModule = LLVM.LLVMCloneModule(module);
+		final LLVMExecutionEngineRef engine = createExecutionEngine(optModule);
+		if(isOptimized == false) {
+			optimizeModule(optModule, device);
+			jitCompileModule(engine, optModule, device);
+		}
 
-		return new LLVMProgram<>(engine, moduleBuilder.getInvocationInterface());
+		return new LLVMProgram<>(engine, optModule, invocationInterface);
 	}
 
-	protected static LLVMExecutionEngineRef createEngine(LLVMModuleRef module) {
+	public static LLVMExecutionEngineRef createExecutionEngine(LLVMModuleRef module) {
 		LLVMExecutionEngineRef engine = new LLVMExecutionEngineRef();
 		BytePointer error = new BytePointer((Pointer) null);
 		try {
-			if (LLVM.LLVMCreateExecutionEngineForModule(engine, module, error) != 0) {
+			// https://lowlevelbits.org/how-to-use-llvm-api-with-swift.-addendum/
+			// https://wiki.aalto.fi/display/t1065450/LLVM+Execution+and+Interpretation+%3A+LLVM+Execution+Engine%2C+Just-In-Time+Compiler+and+Interpreter
+//			if (LLVM.LLVMCreateInterpreterForModule(engine, module, error) != 0) 		// needs jitCompileModule
+//			if (LLVM.LLVMCreateJITCompilerForModule(engine, module, 3, error) != 0) 
+			if (LLVM.LLVMCreateExecutionEngineForModule(engine, module, error) != 0)	// general engine 
 				throw new RuntimeException(error.getString());
-			}
 		} finally {
 			LLVM.LLVMDisposeMessage(error);
 		}
@@ -129,11 +130,11 @@ public class LLVMCompiler {
 		}
 	}
 
-	protected static void optimizeModule(LLVMModuleRef module, BytePointer device) {
+	public static void optimizeModule(LLVMModuleRef module, BytePointer device) {
 		LLVM.optimizeModule(module, device, 3, 0);
 	}
 
-	protected static void jitCompileModule(LLVMExecutionEngineRef engine, LLVMModuleRef module, BytePointer device) {
+	public static void jitCompileModule(LLVMExecutionEngineRef engine, LLVMModuleRef module, BytePointer device) {
 		LLVM.createOptimizedJITCompilerForModule(engine, module, device, 3);
 	}
 
@@ -171,6 +172,7 @@ public class LLVMCompiler {
 		// Initialize the LLVM libraries and MCJIT back-end 
 		// https://www.doof.me.uk/2017/05/11/using-orc-with-llvms-c-api/
 		LLVM.LLVMLinkInMCJIT();
+//		LLVM.LLVMLinkInInterpreter();
 
 		// The main program should call this function to initialize the printer for the native target corresponding to the host.
 		LLVM.LLVMInitializeNativeAsmPrinter();

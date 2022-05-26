@@ -3,8 +3,10 @@ package net.wpm.llvm;
 import java.io.IOException;
 import java.lang.instrument.IllegalClassFormatException;
 import java.net.URISyntaxException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.security.NoSuchAlgorithmException;
 import java.text.ParseException;
 import java.util.Random;
 
@@ -17,12 +19,13 @@ import net.wpm.llvm.module.LLVMMatMulTest;
 
 public class LLVMClangModuleBuilderTest {
 
-	public static void main(String[] args) throws InterruptedException, IOException, ParseException, NoSuchMethodException, IllegalClassFormatException, URISyntaxException {
+	public static void main(String[] args) throws Exception {
 		
 		final LLVMClangModuleBuilderTest test = new LLVMClangModuleBuilderTest();
-		test.testCIntrinsic();
-		test.testCCodeFile();
-		test.testCCode();
+//		test.testCIntrinsic();
+//		test.testCCodeFile();
+		test.testCachedFile();
+//		test.testCCode();
 
 		LLVM.LLVMShutdown();
 		System.out.println("Finished");
@@ -38,9 +41,10 @@ public class LLVMClangModuleBuilderTest {
 	 * @throws NoSuchMethodException
 	 * @throws IllegalClassFormatException
 	 * @throws URISyntaxException
+	 * @throws NoSuchAlgorithmException 
 	 */
 	@Test
-	public void testCIntrinsic() throws IOException, InterruptedException, ParseException, NoSuchMethodException, IllegalClassFormatException, URISyntaxException {
+	public void testCIntrinsic() throws IOException, InterruptedException, ParseException, NoSuchMethodException, IllegalClassFormatException, URISyntaxException, NoSuchAlgorithmException {
 		final String cCode = "" +
 				"int compute_abs(const int val)\n" + 
 				"{\n" + 
@@ -54,10 +58,10 @@ public class LLVMClangModuleBuilderTest {
 			System.out.println("result: "+200);
 			Assert.assertEquals(result, 200);
 		}
-	}	
-		
+	}
+	
 	@Test
-	public void testCCodeFile() throws IOException, InterruptedException, ParseException, NoSuchMethodException, IllegalClassFormatException, URISyntaxException {
+	public void testCCodeFile() throws IOException, InterruptedException, ParseException, NoSuchMethodException, IllegalClassFormatException, URISyntaxException, NoSuchAlgorithmException {
 		final Path cFile = Paths.get(LLVMClangModuleBuilderTest.class.getResource("matmul.c").toURI());
 		
 		final int M = 20, N = 20, K = 20;
@@ -65,10 +69,10 @@ public class LLVMClangModuleBuilderTest {
 		final float[] a = LLVMMatMulTest.createRandomArray(rand, M, K);
 		final float[] b = LLVMMatMulTest.createRandomArray(rand, K, N);
 		final float[] c = new float[M * N];
-
+		
 		final LLVMModuleBuilder<MatMulInterface> moduleBuilder = new LLVMClangModuleBuilder<>(cFile, MatMulInterface.class);
 		final LLVMCompiler compiler = new LLVMCompiler(true, false);
-		try(LLVMProgram<MatMulInterface> program = compiler.compile(moduleBuilder, false)) {			
+		try(LLVMProgram<MatMulInterface> program = compiler.compile(moduleBuilder, false, false)) {	
 			long start = System.currentTimeMillis();
 			program.invoke().matmul(a, b, c, M, N, K);
 			System.out.println("c[0]"+c[0]+" took "+(System.currentTimeMillis()-start)+"ms");
@@ -77,7 +81,43 @@ public class LLVMClangModuleBuilderTest {
 	}
 	
 	@Test
-	public void testCCode() throws IOException, InterruptedException, ParseException, NoSuchMethodException, IllegalClassFormatException {
+	public void testCachedFile() throws IOException, InterruptedException, ParseException, NoSuchMethodException, IllegalClassFormatException, URISyntaxException, NoSuchAlgorithmException {
+		final Path cFile = Paths.get(LLVMClangModuleBuilderTest.class.getResource("matmul.c").toURI());
+		final Path cacheDir = Paths.get("i:\\V3C\\generated\\");
+		
+		final int M = 2000, N = 2000, K = 2000;
+		final Random rand = new Random(7);
+		final float[] a = LLVMMatMulTest.createRandomArray(rand, M, K);
+		final float[] b = LLVMMatMulTest.createRandomArray(rand, K, N);
+		final float[] c = new float[M * N];
+		
+		long start = System.currentTimeMillis();
+		final LLVMCompiler compiler = new LLVMCompiler(true, false);
+		System.out.println("llvm compiler setup after "+(System.currentTimeMillis()-start)+"ms");
+		
+		final LLVMClangModuleBuilder<MatMulInterface> moduleBuilder = new LLVMClangModuleBuilder<>(cFile, cacheDir, MatMulInterface.class);
+		final boolean isOptimized = Files.exists(moduleBuilder.getLLVMFile());
+		System.out.println("transpile after "+(System.currentTimeMillis()-start)+"ms");
+				
+		try(LLVMProgram<MatMulInterface> program = compiler.compile(moduleBuilder, isOptimized, false, false)) {	
+			System.out.println("llvm compile after "+(System.currentTimeMillis()-start)+"ms");
+			
+			long calcStart = System.currentTimeMillis();
+			program.invoke().matmul(a, b, c, M, N, K);
+			System.out.println("c[0]"+c[0]+" took "+(System.currentTimeMillis()-calcStart)+"ms");
+			
+			// store and optimized version
+			if(isOptimized == false) {
+				String filename = moduleBuilder.getLLVMFile().getFileName().toString();
+				String bcFilename = filename.substring(0, filename.lastIndexOf('.')) + ".bc";			
+				LLVMStoredModuleBuilder.storeBitcode(program.getOptimizedModule(), cacheDir.resolve(bcFilename));
+				System.out.println("storeBitcode after "+(System.currentTimeMillis()-start)+"ms");
+			}
+		}
+	}
+	
+	@Test
+	public void testCCode() throws IOException, InterruptedException, ParseException, NoSuchMethodException, IllegalClassFormatException, NoSuchAlgorithmException {
 		final String cCode = "" +
 				"void matmul(const float *a, const float *b, float *c, const int M, const int N, const int K)\n" + 
 				"{\n" + 

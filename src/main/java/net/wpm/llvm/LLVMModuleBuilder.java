@@ -30,5 +30,4 @@ public interface LLVMModuleBuilder<T> {
 	 * @return a class object to a java interface
 	 */
 	public Class<T> getInvocationInterface();
-
 }

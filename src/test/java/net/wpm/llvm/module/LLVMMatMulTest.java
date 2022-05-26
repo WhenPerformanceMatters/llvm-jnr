@@ -27,7 +27,7 @@ public class LLVMMatMulTest {
 	static final int testIterations = 100;
 
 
-	public static void main(String[] args) throws NoSuchMethodException, IllegalClassFormatException {
+	public static void main(String[] args) throws NoSuchMethodException, IllegalClassFormatException  {
 
 		int SIZE = Platform.getPlatform().addressSize();
 		System.out.println("SIZE"+SIZE);
