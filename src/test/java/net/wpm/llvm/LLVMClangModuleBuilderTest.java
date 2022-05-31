@@ -72,7 +72,7 @@ public class LLVMClangModuleBuilderTest {
 		
 		final LLVMModuleBuilder<MatMulInterface> moduleBuilder = new LLVMClangModuleBuilder<>(cFile, MatMulInterface.class);
 		final LLVMCompiler compiler = new LLVMCompiler(true, false);
-		try(LLVMProgram<MatMulInterface> program = compiler.compile(moduleBuilder, false, false)) {	
+		try(LLVMProgram<MatMulInterface> program = compiler.compile(moduleBuilder, false)) {	
 			long start = System.currentTimeMillis();
 			program.invoke().matmul(a, b, c, M, N, K);
 			System.out.println("c[0]"+c[0]+" took "+(System.currentTimeMillis()-start)+"ms");
@@ -99,7 +99,7 @@ public class LLVMClangModuleBuilderTest {
 		final boolean isOptimized = Files.exists(moduleBuilder.getLLVMFile());
 		System.out.println("transpile after "+(System.currentTimeMillis()-start)+"ms");
 				
-		try(LLVMProgram<MatMulInterface> program = compiler.compile(moduleBuilder, isOptimized, false, false)) {	
+		try(LLVMProgram<MatMulInterface> program = compiler.compile(moduleBuilder, isOptimized)) {	
 			System.out.println("llvm compile after "+(System.currentTimeMillis()-start)+"ms");
 			
 			long calcStart = System.currentTimeMillis();

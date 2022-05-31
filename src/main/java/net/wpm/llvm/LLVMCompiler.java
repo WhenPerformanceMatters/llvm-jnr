@@ -62,7 +62,7 @@ public class LLVMCompiler {
 	 *  
 	 * @param <T> invocation interface 
 	 * @param moduleBuilder module builder
-	 * @param isOptimized 
+	 * @param isOptimized is this module already optimized
 	 * @return the {@link LLVMProgram} provides access to the LLVM functions and should be disposed when no longer needed.
 	 * @throws IllegalClassFormatException if the invocation interface has invalid statements like overloaded methods
 	 * @throws NoSuchMethodException if the LLVM code does not contain all the functions as in the invocation interface
@@ -82,7 +82,7 @@ public class LLVMCompiler {
 	 * @param <T> invocation interface 
 	 * @param module containing llvm assembly
 	 * @param invocationInterface class
-	 * @param isOptimized
+	 * @param isOptimized is this module already optimized
 	 * @return the {@link LLVMProgram} provides access to the LLVM functions and should be disposed when no longer needed.
 	 * @throws IllegalClassFormatException if the invocation interface has invalid statements like overloaded methods
 	 * @throws NoSuchMethodException if the LLVM code does not contain all the functions as in the invocation interface

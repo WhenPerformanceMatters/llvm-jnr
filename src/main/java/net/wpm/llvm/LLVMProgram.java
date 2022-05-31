@@ -172,7 +172,7 @@ public class LLVMProgram<T> implements AutoCloseable {
 
 			// get the types of the input parameters from the LLVM IR function
 			final PointerPointer<LLVMTypeRef> ptr = new PointerPointer<>(new LLVMTypeRef[parameterCount]);
-			LLVM.LLVMGetParamTypes(funcType, ptr);				
+			LLVM.LLVMGetParamTypes(funcType, ptr);
 			for (int i = 0; i < parameterCount; i++) {
 				LLVMTypeRef llvmParam = new LLVMTypeRef(ptr.get(i));
 				Class<?> javaType = parameters[i].getType();
@@ -254,9 +254,11 @@ public class LLVMProgram<T> implements AutoCloseable {
 			return true;
 		else if(typeKind == LLVM.LLVMDoubleTypeKind && javaType == double.class)
 			return true;
-		else if(typeKind == LLVM.LLVMIntegerTypeKind && (javaType == int.class || javaType == short.class || javaType == byte.class || javaType == boolean.class)) {
+		else if(typeKind == LLVM.LLVMIntegerTypeKind && (javaType == long.class || javaType == int.class || javaType == short.class || javaType == byte.class || javaType == boolean.class)) {
 			int b = LLVM.LLVMGetIntTypeWidth(llvmType);
-			if(b == 32 && javaType == int.class)
+			if(b == 64 && javaType == long.class)
+				return true;
+			else if(b == 32 && javaType == int.class)
 				return true;
 			else if(b == 16 && javaType == short.class)
 				return true;
