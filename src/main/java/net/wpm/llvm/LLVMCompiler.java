@@ -163,12 +163,24 @@ public class LLVMCompiler {
 						"-mllvm", "-polly-parallel",
 						"-mllvm", "-polly-vectorizer=stripmine");
 			} else {
+				// https://polly.llvm.org/docs/Architecture.html
 				setLLVMCommandLineOptions("",
 						"-mllvm", "-polly",
 						"-mllvm", "-polly-vectorizer=stripmine");
 			}
 		}
+		
+		// TODO maybe a pass manager is better
+		// Create a pass pipeline using the legacy pass manager
+		// https://github.com/bytedeco/javacpp-presets/blob/master/llvm/samples/llvm/Factorial.java#L116
+		// New one might be better
+		// https://llvm.org/docs/NewPassManager.html#just-tell-me-how-to-run-the-default-optimization-pipeline-with-the-new-pass-manager
+		// e.g. https://github.com/crystal-lang/crystal/pull/12116
 
+		// TODO Execute using OrcJIT
+		// https://github.com/bytedeco/javacpp-presets/blob/master/llvm/samples/llvm/OrcJit.java
+		
+		
 		// Initialize the LLVM libraries and MCJIT back-end 
 		// https://www.doof.me.uk/2017/05/11/using-orc-with-llvms-c-api/
 		LLVM.LLVMLinkInMCJIT();

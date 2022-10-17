@@ -13,7 +13,6 @@ sourceCompatibility = targetCompatibility = 1.8
 // character encoding
 tasks.withType(AbstractCompile)*.options*.encoding = "UTF-8"
 
-
 // group and version of the project 
 version = '1.0.2'
 group = 'net.whenperformancematters'
@@ -66,6 +65,10 @@ artifacts {
 }
 
 signing {
+    setRequired {
+        // signing is only required if the artifacts are to be published
+        gradle.taskGraph.allTasks.any { it.equals( PublishToMavenRepository) }
+    }
     sign configurations.archives
 }
 
