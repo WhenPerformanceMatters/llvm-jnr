@@ -6,8 +6,6 @@ import java.nio.file.Path;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 
-import javax.xml.bind.DatatypeConverter;
-
 import org.bytedeco.javacpp.Loader;
 import org.bytedeco.llvm.LLVM.LLVMModuleRef;
 
@@ -134,7 +132,7 @@ public class LLVMClangModuleBuilder<T> extends LLVMStoredModuleBuilder<T> {
 		MessageDigest md = MessageDigest.getInstance("MD5");
 		md.update(Files.readAllBytes(cFile));
 		byte[] digest = md.digest();
-		return DatatypeConverter.printHexBinary(digest).toUpperCase();		
+		return bytesToHex(digest);	
 	}
 	
 	/**
@@ -148,8 +146,23 @@ public class LLVMClangModuleBuilder<T> extends LLVMStoredModuleBuilder<T> {
 		MessageDigest md = MessageDigest.getInstance("MD5");
 		md.update(text.getBytes());
 		byte[] digest = md.digest();
-		return DatatypeConverter.printHexBinary(digest).toUpperCase();		
+		return bytesToHex(digest);	
 	}
+	
+	/**
+	 * Convert to HEX values
+	 */
+	private static String bytesToHex(byte[] bytes) {
+	    char[] hexChars = new char[bytes.length * 2];
+	    for (int j = 0; j < bytes.length; j++) {
+	        int v = bytes[j] & 0xFF;
+	        hexChars[j * 2] = HEX_ARRAY[v >>> 4];
+	        hexChars[j * 2 + 1] = HEX_ARRAY[v & 0x0F];
+	    }
+	    return new String(hexChars);
+	}
+	private static final char[] HEX_ARRAY = "0123456789ABCDEF".toCharArray();
+	
 	
 	/**
 	 * Compile the input c file into a LLVM IR file.

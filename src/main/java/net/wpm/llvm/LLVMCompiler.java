@@ -158,29 +158,35 @@ public class LLVMCompiler {
 
 						System.out.println("openmp error"+ error);
 				}
+				// https://polly.llvm.org/docs/UsingPollyWithClang.html
 				setLLVMCommandLineOptions("",
 						"-mllvm", "-polly",
 						"-mllvm", "-polly-parallel",
+						"-lgomp",
 						"-mllvm", "-polly-vectorizer=stripmine");
 			} else {
 				// https://polly.llvm.org/docs/Architecture.html
 				setLLVMCommandLineOptions("",
 						"-mllvm", "-polly",
-						"-mllvm", "-polly-vectorizer=stripmine");
+						"-mllvm", "-polly-vectorizer=stripmine"); // got removed https://github.com/llvm/llvm-project/commit/42cd38c01e5b76357e77b8c0f4f32d77a97d153f
 			}
 		}
 		
 		// TODO maybe a pass manager is better
 		// Create a pass pipeline using the legacy pass manager
 		// https://github.com/bytedeco/javacpp-presets/blob/master/llvm/samples/llvm/Factorial.java#L116
-		// New one might be better
+		// https://github.com/bytedeco/javacpp-presets/blob/master/llvm/samples/polly/MatMulBenchmark.java#L289
+		// https://github.com/bytedeco/javacpp-presets/blob/master/llvm/src/main/resources/org/bytedeco/llvm/include/FullOptimization.h
+			
+		// TODO New one might be better
 		// https://llvm.org/docs/NewPassManager.html#just-tell-me-how-to-run-the-default-optimization-pipeline-with-the-new-pass-manager
 		// e.g. https://github.com/crystal-lang/crystal/pull/12116
+		// https://github.com/seahorn/llvm-seahorn/blob/master/tools/opt/opt.cpp#L300
+		// https://www.intel.cn/content/www/cn/zh/developer/articles/technical/optimizing-llvm-code-generation-for-data-analytics.html
 
 		// TODO Execute using OrcJIT
 		// https://github.com/bytedeco/javacpp-presets/blob/master/llvm/samples/llvm/OrcJit.java
-		
-		
+				
 		// Initialize the LLVM libraries and MCJIT back-end 
 		// https://www.doof.me.uk/2017/05/11/using-orc-with-llvms-c-api/
 		LLVM.LLVMLinkInMCJIT();

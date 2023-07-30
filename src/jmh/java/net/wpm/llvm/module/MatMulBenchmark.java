@@ -50,34 +50,23 @@ import net.wpm.llvm.LLVMStoredModuleBuilder;
  * MKL: 284,999140ms. c[0] = 489,814423
  * LLVM with Polly: 1096,962030ms. c[0] = 489,814575
  * LLVM with Polly: 1092,440860ms. c[0] = 489,814575
- * Pure Java: 16988,667810ms. c[0] = 489,814575
- * 
+ * Pure Java  8: 14873,667810ms. c[0] = 489,814575
+ * Pure Java 20: 15111,002500ms. c[0] = 489,814575
+ *  
  * -------------------
  * 
  * Tests on a Ryzen 2700X
- * M = 20, N = 20, K = 20;
- * usePolly = true;
- * usePollyParallel = false;
- * testIterations = 100;
+ * M = 20, N = 20, K = 20
+ * usePolly = true
+ * usePollyParallel = false
+ * warmupIterations = 1000000
+ * testIterations = 1000000
  * 
- * MKL: 0,000847ms. c[0] = 7,069445
- * LLVM with JNR and Polly: 0,000882ms. c[0] = 7,069445
- * LLVM with JNA and Polly: 0,001976ms. c[0] = 7,069445
- * Pure Java: 0,006404ms. c[0] = 7,069445
- * 
- * -------------------
- * 
- * Tests on a Ryzen 2700X
- * M = 20, N = 20, K = 20;
- * usePolly = true;
- * usePollyParallel = false;
- * testIterations = 10000;
- * 
- * MKL: 0,000740ms. c[0] = 7,069445
- * LLVM with JNR and Polly: 0,000710ms. c[0] = 7,069445
- * LLVM with JNA and Polly: 0,001603ms. c[0] = 7,069445
- * Pure Java: 0,006228ms. c[0] = 7,069445
- * 
+ * MKL: 0.000710ms. c[0] = 7.069445
+ * LLVM with JNR and Polly: 0.000710ms. c[0] = 7.069445
+ * LLVM with JNA and Polly: 0.001439ms. c[0] = 7.069445
+ * Pure Java  8: 0.005429ms. c[0] = 7.069445
+ * Pure Java 20: 0,003952ms. c[0] = 7,069445
  */
 public class MatMulBenchmark {
 
@@ -85,8 +74,8 @@ public class MatMulBenchmark {
 	static final boolean usePolly = true;
 	static final boolean usePollyParallel = false;
 	static final boolean printResult = false;
-	static final int testIterations = 1;
 	static final int warmupIterations = 0;
+	static final int testIterations = 1;
 
 	static final Random rand = new Random(7);
 
@@ -96,6 +85,11 @@ public class MatMulBenchmark {
 		float[] b = createRandomArray(K, N);
 		float[] c = new float[M * N];
 
+		System.out.println("M = "+N+", N = "+N+", K = "+N);
+		System.out.println("usePolly = "+usePolly);
+		System.out.println("usePollyParallel = "+usePollyParallel);
+		System.out.println("warmupIterations = "+warmupIterations);
+		System.out.println("testIterations = "+testIterations);
 		benchmarkMKL(a, b, c);
 		benchmarkLLVMJNR(a, b, c);
 		benchmarkLLVMJNA(a, b, c);
